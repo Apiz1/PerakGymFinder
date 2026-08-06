@@ -11,15 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('membership_plans', function (Blueprint $table) {
+        Schema::create('gym_reports', function (Blueprint $table) {
             $table->id();
             $table->foreignId('gym_id')->constrained()->cascadeOnDelete();
-            $table->string('name', 150);
-            $table->decimal('price', 10, 2);
-            $table->enum('billing_cycle', ['monthly', 'yearly', 'one_time'])->default('monthly');
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->enum('reason', ['wrong_info', 'closed', 'duplicate', 'other']);
             $table->text('description')->nullable();
-            $table->boolean('is_active')->default(true);
-            $table->timestamps();
+            $table->enum('status', ['open', 'resolved', 'dismissed'])->default('open');
+            $table->timestamp('created_at')->useCurrent();
+            $table->index('status');
         });
     }
 
@@ -28,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('membershipplans');
+        Schema::dropIfExists('gymreports');
     }
 };

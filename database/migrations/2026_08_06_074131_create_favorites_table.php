@@ -6,25 +6,20 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::create('gym_images', function (Blueprint $table) {
+        Schema::create('favorites', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('gym_id')->constrained()->cascadeOnDelete();
-            $table->string('image_path', 500);
-            $table->boolean('is_primary')->default(false);
-            $table->unsignedInteger('sort_order')->default(0);
+            $table->timestamp('created_at')->useCurrent();
+
+            $table->unique(['user_id', 'gym_id']);
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::dropIfExists('gymimages');
+        Schema::dropIfExists('favorites');
     }
 };

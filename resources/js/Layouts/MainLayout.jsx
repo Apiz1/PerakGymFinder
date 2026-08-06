@@ -59,6 +59,24 @@ export default function MainLayout({ children }) {
 
     const currentBg = backgrounds[backgroundIndex] || backgrounds[0];
 
+    // Safe route helper to prevent errors
+    const getRoute = (name, params = {}) => {
+        try {
+            return route(name, params);
+        } catch (e) {
+            console.warn(`Route "${name}" not found, using fallback`);
+            if (name === 'logout') return '/logout';
+            if (name === 'login') return '/login';
+            if (name === 'register') return '/register';
+            if (name === 'owner-applications.create') return '/apply-owner';
+            if (name === 'owner-applications.status') return '/apply-owner/status';
+            return '#';
+        }
+    };
+
+    // Check if user is logged in
+    const isLoggedIn = !!auth?.user;
+
     return (
         <div className="min-h-screen flex flex-col relative overflow-hidden">
             {/* Dynamic Background */}
@@ -164,10 +182,17 @@ export default function MainLayout({ children }) {
 
                     {/* Desktop Navigation */}
                     <nav className="hidden md:flex items-center gap-4">
-                        {auth?.user ? (
+                        {isLoggedIn ? (
                             <>
+                                {/* Become Gym Owner Button - Only visible when logged in */}
+                                <Link
+                                    href={getRoute('owner-applications.create')}
+                                    className="text-sm font-bold bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white px-5 py-2.5 rounded-xl shadow-lg shadow-emerald-500/30 transition-all duration-300 hover:scale-105 hover:shadow-emerald-500/50"
+                                >
+                                    🏪 Become Gym Owner
+                                </Link>
                                 <button
-                                    onClick={() => router.post(route('logout'))}
+                                    onClick={() => router.post(getRoute('logout'))}
                                     className="text-sm font-semibold text-white/70 hover:text-red-400 px-4 py-2 rounded-xl transition-all duration-300 hover:bg-white/5"
                                 >
                                     Logout
@@ -176,13 +201,13 @@ export default function MainLayout({ children }) {
                         ) : (
                             <>
                                 <Link
-                                    href={route('login')}
+                                    href={getRoute('login')}
                                     className="text-sm font-semibold text-white/70 hover:text-white px-3 py-2 transition-all duration-300 hover:bg-white/5 rounded-xl"
                                 >
                                     Log In
                                 </Link>
                                 <Link
-                                    href={route('register')}
+                                    href={getRoute('register')}
                                     className="text-sm font-bold bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white px-5 py-2.5 rounded-xl shadow-lg shadow-amber-500/30 transition-all duration-300 hover:scale-105 hover:shadow-amber-500/50"
                                 >
                                     Get Started
@@ -217,18 +242,19 @@ export default function MainLayout({ children }) {
                 }`}>
                     <div className="px-4 py-4 border-t border-white/5 bg-black/60 backdrop-blur-xl">
                         <div className="flex flex-col gap-2">
-                            {auth?.user ? (
+                            {isLoggedIn ? (
                                 <>
+                                    {/* Become Gym Owner - Mobile (Only when logged in) */}
                                     <Link
-                                        href={route('dashboard')}
-                                        className="text-sm font-semibold text-white/80 hover:text-amber-400 px-4 py-3 rounded-xl hover:bg-white/5 transition-all"
+                                        href={getRoute('owner-applications.create')}
+                                        className="text-sm font-bold bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-4 py-3 rounded-xl text-center hover:scale-105 transition-all"
                                         onClick={() => setIsMobileMenuOpen(false)}
                                     >
-                                        Dashboard
+                                        🏪 Become Gym Owner
                                     </Link>
                                     <button
                                         onClick={() => {
-                                            router.post(route('logout'));
+                                            router.post(getRoute('logout'));
                                             setIsMobileMenuOpen(false);
                                         }}
                                         className="text-sm font-semibold text-white/80 hover:text-red-400 px-4 py-3 rounded-xl hover:bg-white/5 transition-all text-left"
@@ -239,14 +265,14 @@ export default function MainLayout({ children }) {
                             ) : (
                                 <>
                                     <Link
-                                        href={route('login')}
+                                        href={getRoute('login')}
                                         className="text-sm font-semibold text-white/80 hover:text-white px-4 py-3 rounded-xl hover:bg-white/5 transition-all"
                                         onClick={() => setIsMobileMenuOpen(false)}
                                     >
                                         Log In
                                     </Link>
                                     <Link
-                                        href={route('register')}
+                                        href={getRoute('register')}
                                         className="text-sm font-bold bg-gradient-to-r from-amber-500 to-amber-600 text-white px-4 py-3 rounded-xl text-center hover:scale-105 transition-all"
                                         onClick={() => setIsMobileMenuOpen(false)}
                                     >

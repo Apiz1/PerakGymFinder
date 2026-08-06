@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('reviewreplies', function (Blueprint $table) {
+        Schema::create('review_replies', function (Blueprint $table) {
             $table->id();
             $table->foreignId('review_id')->constrained()->cascadeOnDelete();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete(); // must be the gym's owner

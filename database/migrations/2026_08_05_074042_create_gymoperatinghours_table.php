@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('gymoperatinghours', function (Blueprint $table) {
+        Schema::create('gym_operating_hours', function (Blueprint $table) {
            $table->id();
             $table->foreignId('gym_id')->constrained()->cascadeOnDelete();
             $table->unsignedTinyInteger('day_of_week'); // 0 = Sunday ... 6 = Saturday

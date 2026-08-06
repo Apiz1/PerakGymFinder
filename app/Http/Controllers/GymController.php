@@ -15,8 +15,10 @@ class GymController extends Controller
         $gyms = Gym::query()
             ->when($search, function ($query, $search) {
                 $query->where('name', 'like', "%{$search}%")
-                      ->orWhere('city', 'like', "%{$search}%")
-                      ->orWhere('address', 'like', "%{$search}%");
+                      ->orWhere('address', 'like', "%{$search}%")
+                      ->orWhereHas('city', function ($q) use ($search) {
+                          $q->where('name', 'like', "%{$search}%");
+                      });
             })
             ->latest()
             ->get();

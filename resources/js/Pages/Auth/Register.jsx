@@ -10,6 +10,7 @@ export default function Register() {
     const { data, setData, post, processing, errors, reset } = useForm({
         name: '',
         email: '',
+        phone: '',
         password: '',
         password_confirmation: '',
     });
@@ -289,6 +290,36 @@ export default function Register() {
                                     />
                                 </div>
                                 <InputError message={errors.email} className="mt-2 text-rose-400 text-xs" />
+                            </div>
+
+                            {/* Phone Number Field - NEW */}
+                            <div>
+                                <InputLabel 
+                                    htmlFor="phone" 
+                                    value="Phone Number" 
+                                    className="text-white/70 text-xs font-semibold uppercase tracking-wider"
+                                />
+                                <div className="mt-1 relative">
+                                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                        </svg>
+                                    </div>
+                                    <TextInput
+                                        id="phone"
+                                        type="tel"
+                                        name="phone"
+                                        value={data.phone}
+                                        className="block w-full pl-10 pr-3 py-3 bg-white/5 border-white/10 text-white placeholder-white/30 rounded-xl focus:border-amber-500 focus:ring-amber-500/20 transition-all"
+                                        placeholder="+60 12-3456789"
+                                        autoComplete="tel"
+                                        onChange={(e) => setData('phone', e.target.value)}
+                                    />
+                                </div>
+                                <p className="text-[10px] text-white/30 mt-1">
+                                    Optional - We'll use this for important notifications
+                                </p>
+                                <InputError message={errors.phone} className="mt-2 text-rose-400 text-xs" />
                             </div>
 
                             {/* Password Field */}
