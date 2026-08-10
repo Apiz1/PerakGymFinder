@@ -5,6 +5,8 @@ use App\Http\Controllers\Admin\AdminGymController;
 use App\Http\Controllers\Admin\AdminGymOwnerApplicationController;
 use App\Http\Controllers\GymController;
 use App\Http\Controllers\GymOwnerApplicationController;
+use App\Http\Controllers\Owner\CreateGymController;
+use App\Http\Controllers\Owner\EditGymController;
 use App\Http\Controllers\Owner\GymOwnerController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -54,6 +56,7 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->name('admin.')
 
     Route::get('owner-applications', [AdminGymOwnerApplicationController::class, 'index'])->name('owner-applications.index');
     Route::get('owner-applications/{ownerApplication}', [AdminGymOwnerApplicationController::class, 'show'])->name('owner-applications.show');
+    Route::get('owner-applications/{ownerApplication}/document', [AdminGymOwnerApplicationController::class, 'downloadDocument'])->name('owner-applications.document');
     Route::post('owner-applications/{ownerApplication}/approve', [AdminGymOwnerApplicationController::class, 'approve'])->name('owner-applications.approve');
     Route::post('owner-applications/{ownerApplication}/reject', [AdminGymOwnerApplicationController::class, 'reject'])->name('owner-applications.reject');
 });
@@ -66,8 +69,10 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->name('admin.')
 
 Route::middleware(['auth', 'role:gym_owner,super_admin'])->prefix('owner')->name('owner.')->group(function () {
     Route::get('/dashboard', [GymOwnerController::class, 'dashboard'])->name('dashboard');
-    Route::get('/gym/create', [GymOwnerController::class, 'createGym'])->name('gym.create');
-    Route::post('/gym', [GymOwnerController::class, 'storeGym'])->name('gym.store');
+    Route::get('/gym/create', [CreateGymController::class, 'create'])->name('gym.create');
+    Route::post('/gym', [CreateGymController::class, 'store'])->name('gym.store');
+    Route::get('/gym/edit', [EditGymController::class, 'edit'])->name('gym.edit');
+    Route::put('/gym', [EditGymController::class, 'update'])->name('gym.update');
 });
 
 require __DIR__.'/auth.php';

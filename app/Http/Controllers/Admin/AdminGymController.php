@@ -37,13 +37,21 @@ class AdminGymController extends Controller
             ->paginate(15)
             ->withQueryString();
 
+        $counts = Gym::query()
+            ->selectRaw('status, count(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status');
+
         return Inertia::render('Admin/Gyms/Index', [
             'gyms' => $gyms,
             'filters' => $request->only(['status', 'search']),
-            'statusCounts' => Gym::query()
-                ->selectRaw('status, count(*) as count')
-                ->groupBy('status')
-                ->pluck('count', 'status'),
+            'statusCounts' => [
+                'pending' => $counts->get('pending', 0),
+                'approved' => $counts->get('approved', 0),
+                'rejected' => $counts->get('rejected', 0),
+                'suspended' => $counts->get('suspended', 0),
+                'all' => $counts->sum(),
+            ],
         ]);
     }
 

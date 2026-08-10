@@ -4,6 +4,7 @@ import AdminLayout from '@/Layouts/AdminLayout';
 
 export default function Show({ application }) {
     const [isProcessing, setIsProcessing] = useState(false);
+    const [isDownloading, setIsDownloading] = useState(false);
 
     // Status Badge Component Helper
     const renderStatusBadge = (status) => {
@@ -48,6 +49,22 @@ export default function Show({ application }) {
                 preserveScroll: true,
             }
         );
+    };
+
+    // Handle document download
+    const handleDownloadDocument = () => {
+        if (!application.business_doc_path) return;
+        
+        setIsDownloading(true);
+        
+        // Use the document download route
+        const downloadUrl = route('admin.owner-applications.document', application.id);
+        
+        // Open in new tab or trigger download
+        window.open(downloadUrl, '_blank');
+        
+        // Reset loading state after a moment
+        setTimeout(() => setIsDownloading(false), 1000);
     };
 
     // Get application type label
@@ -259,14 +276,25 @@ export default function Show({ application }) {
                                     <p className="text-xs text-slate-400 mb-2">
                                         Business registration or license document
                                     </p>
-                                    <a
-                                        href={application.business_doc_path}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-2 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-slate-950 px-4 py-2 rounded-lg text-xs font-bold transition-all border border-emerald-500/20"
+                                    <button
+                                        onClick={handleDownloadDocument}
+                                        disabled={isDownloading}
+                                        className="inline-flex items-center gap-2 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-slate-950 px-4 py-2 rounded-lg text-xs font-bold transition-all border border-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        <span>📥</span> Download Document
-                                    </a>
+                                        {isDownloading ? (
+                                            <>
+                                                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                                </svg>
+                                                <span>Downloading...</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <span>📥</span> Download Document
+                                            </>
+                                        )}
+                                    </button>
                                 </div>
                                 <div className="text-[10px] text-slate-500 text-center">
                                     File stored securely in the system

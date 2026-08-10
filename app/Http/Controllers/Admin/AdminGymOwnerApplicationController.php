@@ -9,8 +9,10 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AdminGymOwnerApplicationController extends Controller
 {
@@ -19,7 +21,6 @@ class AdminGymOwnerApplicationController extends Controller
      */
     public function index(Request $request): Response
     {
-        
         $status = $request->input('status', 'pending');
 
         $applications = GymOwnerApplication::query()
@@ -29,9 +30,20 @@ class AdminGymOwnerApplicationController extends Controller
             ->paginate(15)
             ->withQueryString();
 
+        $counts = GymOwnerApplication::query()
+            ->selectRaw('status, count(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status');
+
         return Inertia::render('Admin/OwnerApplications/Index', [
             'applications' => $applications,
             'filters' => $request->only('status'),
+            'statusCounts' => [
+                'pending' => $counts->get('pending', 0),
+                'approved' => $counts->get('approved', 0),
+                'rejected' => $counts->get('rejected', 0),
+                'all' => $counts->sum(),
+            ],
         ]);
     }
 
@@ -82,6 +94,21 @@ class AdminGymOwnerApplicationController extends Controller
         });
 
         return back()->with('success', "{$ownerApplication->user->name} has been approved as a gym owner.");
+    }
+
+    /**
+     * Streams the applicant's business document — deliberately NOT a public URL.
+     * This route is behind `role:super_admin` (see routes/web.php), so only an
+     * authenticated admin can ever reach it, unlike a direct storage/public link.
+     */
+    public function downloadDocument(GymOwnerApplication $ownerApplication): StreamedResponse
+    {
+        abort_unless(
+            $ownerApplication->business_doc_path && Storage::disk('local')->exists($ownerApplication->business_doc_path),
+            404
+        );
+
+        return Storage::disk('local')->download($ownerApplication->business_doc_path);
     }
 
     /**

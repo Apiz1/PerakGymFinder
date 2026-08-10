@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, router, Head } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 
-export default function Index({ applications, filters }) {
+export default function Index({ applications, filters, statusCounts }) {
     const [search, setSearch] = useState('');
     const [processingId, setProcessingId] = useState(null);
     const isFirstRender = useRef(true);
@@ -10,21 +10,8 @@ export default function Index({ applications, filters }) {
     // Filter status tabs helper
     const currentStatus = filters.status || 'pending';
 
-    // Calculate status counts from applications
-    const statusCounts = {
-        pending: 0,
-        approved: 0,
-        rejected: 0,
-    };
-
-    // Count statuses from applications data
-    applications.data?.forEach(app => {
-        if (statusCounts.hasOwnProperty(app.status)) {
-            statusCounts[app.status]++;
-        }
-    });
-
-    const totalApplications = applications.total || 0;
+    // Use statusCounts from props (passed from controller)
+    const totalApplications = statusCounts?.all || applications.total || 0;
 
     // Debounced Search Effect
     useEffect(() => {
@@ -122,9 +109,9 @@ export default function Index({ applications, filters }) {
             {/* STATUS COUNTER TABS */}
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 {[
-                    { key: 'pending', label: 'Pending Review', count: statusCounts.pending, color: 'text-amber-400', alert: statusCounts.pending > 0 },
-                    { key: 'approved', label: 'Approved', count: statusCounts.approved, color: 'text-emerald-400' },
-                    { key: 'rejected', label: 'Rejected', count: statusCounts.rejected, color: 'text-rose-400' },
+                    { key: 'pending', label: 'Pending Review', count: statusCounts?.pending || 0, color: 'text-amber-400', alert: (statusCounts?.pending || 0) > 0 },
+                    { key: 'approved', label: 'Approved', count: statusCounts?.approved || 0, color: 'text-emerald-400' },
+                    { key: 'rejected', label: 'Rejected', count: statusCounts?.rejected || 0, color: 'text-rose-400' },
                     { key: 'all', label: 'All Applications', count: totalApplications, color: 'text-slate-200' },
                 ].map((tab) => (
                     <button
