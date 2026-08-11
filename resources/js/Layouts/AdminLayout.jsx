@@ -4,11 +4,11 @@ import { Link, usePage, router } from '@inertiajs/react';
 export default function AdminLayout({ children, title = 'Admin Dashboard' }) {
     const { auth, pendingCounts = {}, url } = usePage().props;
     const [processingId, setProcessingId] = useState(null);
-    const currentUrl = usePage().url; // Used to highlight active route
-
+    const currentUrl = usePage().url;
     const [searchQuery, setSearchQuery] = useState('');
     const [userDropdown, setUserDropdown] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
     // Navigation Structure
     const navItems = [
@@ -33,11 +33,33 @@ export default function AdminLayout({ children, title = 'Admin Dashboard' }) {
         setUserDropdown(false);
     }, [currentUrl]);
 
-    // Handle logout
-    const handleLogout = () => {
-        if (confirm('Are you sure you want to logout?')) {
-            router.post('/logout');
+    // Prevent body scroll when modal is open
+    useEffect(() => {
+        if (isLogoutModalOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
         }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [isLogoutModalOpen]);
+
+    // Handle logout with modal
+    const handleLogoutClick = () => {
+        setUserDropdown(false);
+        setIsLogoutModalOpen(true);
+    };
+
+    // Confirm logout
+    const confirmLogout = () => {
+        setIsLogoutModalOpen(false);
+        router.post('/logout');
+    };
+
+    // Cancel logout
+    const cancelLogout = () => {
+        setIsLogoutModalOpen(false);
     };
 
     // Handle search
@@ -49,6 +71,16 @@ export default function AdminLayout({ children, title = 'Admin Dashboard' }) {
     };
 
     const isActive = (path) => currentUrl.startsWith(path);
+
+    // Get user initials
+    const getUserInitials = () => {
+        const name = auth?.user?.name || 'Admin';
+        const names = name.split(' ');
+        if (names.length >= 2) {
+            return `${names[0].charAt(0)}${names[names.length - 1].charAt(0)}`.toUpperCase();
+        }
+        return name.charAt(0).toUpperCase();
+    };
 
     return (
         <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans antialiased selection:bg-amber-500 selection:text-slate-950">
@@ -125,7 +157,7 @@ export default function AdminLayout({ children, title = 'Admin Dashboard' }) {
                             className="flex items-center gap-2.5 bg-slate-900 hover:bg-slate-800/80 border border-slate-800/80 pl-1.5 pr-3 py-1.5 rounded-xl transition group"
                         >
                             <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-amber-500 to-amber-300 text-slate-950 font-bold text-xs flex items-center justify-center shadow-sm">
-                                {auth?.user?.name ? auth.user.name.charAt(0).toUpperCase() : 'A'}
+                                {getUserInitials()}
                             </div>
                             <span className="text-xs font-medium text-slate-300 group-hover:text-white hidden sm:inline">
                                 {auth?.user?.name || 'Super Admin'}
@@ -158,7 +190,7 @@ export default function AdminLayout({ children, title = 'Admin Dashboard' }) {
                                     </Link>
                                     <div className="border-t border-slate-800 my-1"></div>
                                     <button
-                                        onClick={handleLogout}
+                                        onClick={handleLogoutClick}
                                         className="w-full text-left px-4 py-2 text-xs text-rose-400 hover:bg-rose-500/10 transition flex items-center gap-2"
                                     >
                                         <span>Log Out</span>
@@ -289,6 +321,62 @@ export default function AdminLayout({ children, title = 'Admin Dashboard' }) {
                     <Link href="/admin/support" className="hover:text-slate-300 transition">Support</Link>
                 </div>
             </footer>
+
+            {/* LOGOUT CONFIRMATION MODAL */}
+            {isLogoutModalOpen && (
+                <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
+                    {/* Backdrop */}
+                    <div 
+                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        onClick={cancelLogout}
+                    ></div>
+                    
+                    {/* Modal */}
+                    <div className="relative max-w-md w-full bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl p-6 animate-in fade-in zoom-in duration-200">
+                        {/* Icon */}
+                        <div className="flex justify-center mb-4">
+                            <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                                <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                </svg>
+                            </div>
+                        </div>
+
+                        {/* Title & Description */}
+                        <h3 className="text-xl font-bold text-white text-center mb-2">Logout Confirmation</h3>
+                        <p className="text-sm text-slate-400 text-center mb-6">
+                            Are you sure you want to logout? You'll need to sign in again to access the admin panel.
+                        </p>
+
+                        {/* User Info */}
+                        <div className="bg-white/5 rounded-xl p-3 mb-6 flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-slate-950 font-bold text-sm shadow-lg shadow-amber-500/20">
+                                {getUserInitials()}
+                            </div>
+                            <div>
+                                <p className="text-sm font-semibold text-white">{auth?.user?.name || 'Administrator'}</p>
+                                <p className="text-xs text-slate-400">{auth?.user?.email || 'admin@gymfinder.com'}</p>
+                            </div>
+                        </div>
+
+                        {/* Buttons */}
+                        <div className="flex gap-3">
+                            <button
+                                onClick={cancelLogout}
+                                className="flex-1 px-4 py-2.5 rounded-xl border border-white/10 text-white/70 hover:text-white hover:bg-white/5 transition-all duration-200 font-medium text-sm"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmLogout}
+                                className="flex-1 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold text-sm shadow-lg shadow-red-500/20 transition-all duration-200 hover:scale-105"
+                            >
+                                Yes, Logout
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

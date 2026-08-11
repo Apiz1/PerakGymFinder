@@ -5,6 +5,8 @@ import { router } from '@inertiajs/react';
 export default function MainLayout({ children }) {
     const { auth } = usePage().props;
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+    const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const [backgroundIndex, setBackgroundIndex] = useState(0);
 
@@ -57,6 +59,29 @@ export default function MainLayout({ children }) {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
+    // Close dropdown on click outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (isProfileDropdownOpen && !event.target.closest('.profile-dropdown-wrapper')) {
+                setIsProfileDropdownOpen(false);
+            }
+        };
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, [isProfileDropdownOpen]);
+
+    // Prevent body scroll when modal is open
+    useEffect(() => {
+        if (isLogoutModalOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [isLogoutModalOpen]);
+
     const currentBg = backgrounds[backgroundIndex] || backgrounds[0];
 
     // Safe route helper to prevent errors
@@ -70,12 +95,50 @@ export default function MainLayout({ children }) {
             if (name === 'register') return '/register';
             if (name === 'owner-applications.create') return '/apply-owner';
             if (name === 'owner-applications.status') return '/apply-owner/status';
+            if (name === 'profile.edit') return '/profile';
+            if (name === 'profile.settings') return '/settings';
             return '#';
         }
     };
 
     // Check if user is logged in
     const isLoggedIn = !!auth?.user;
+    const user = auth?.user;
+    const userName = user?.name || 'Guest';
+    const userEmail = user?.email || '';
+    const userAvatar = user?.avatar || null;
+
+    // Get user initials for avatar
+    const getUserInitials = () => {
+        if (!userName) return 'G';
+        const names = userName.split(' ');
+        if (names.length >= 2) {
+            return `${names[0].charAt(0)}${names[names.length - 1].charAt(0)}`.toUpperCase();
+        }
+        return userName.charAt(0).toUpperCase();
+    };
+
+    // Handle logout with modal
+    const handleLogoutClick = () => {
+        setIsProfileDropdownOpen(false);
+        setIsLogoutModalOpen(true);
+    };
+
+    // Confirm logout
+    const confirmLogout = () => {
+        setIsLogoutModalOpen(false);
+        router.post(getRoute('logout'));
+    };
+
+    // Cancel logout
+    const cancelLogout = () => {
+        setIsLogoutModalOpen(false);
+    };
+
+    // Toggle profile dropdown
+    const toggleProfileDropdown = () => {
+        setIsProfileDropdownOpen(!isProfileDropdownOpen);
+    };
 
     return (
         <div className="min-h-screen flex flex-col relative overflow-hidden">
@@ -191,12 +254,92 @@ export default function MainLayout({ children }) {
                                 >
                                     🏪 Become Gym Owner
                                 </Link>
-                                <button
-                                    onClick={() => router.post(getRoute('logout'))}
-                                    className="text-sm font-semibold text-white/70 hover:text-red-400 px-4 py-2 rounded-xl transition-all duration-300 hover:bg-white/5"
-                                >
-                                    Logout
-                                </button>
+                                
+                                {/* Profile Dropdown */}
+                                <div className="profile-dropdown-wrapper relative">
+                                    <button
+                                        onClick={toggleProfileDropdown}
+                                        className="flex items-center gap-2.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 px-3 py-2 rounded-xl transition-all duration-300 group"
+                                    >
+                                        {/* Avatar */}
+                                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white font-bold text-xs shadow-lg shadow-amber-500/20">
+                                            {userAvatar ? (
+                                                <img src={userAvatar} alt={userName} className="w-full h-full rounded-lg object-cover" />
+                                            ) : (
+                                                getUserInitials()
+                                            )}
+                                        </div>
+                                        
+                                        {/* User Info */}
+                                        <div className="flex flex-col items-start">
+                                            <span className="text-sm font-semibold text-white group-hover:text-amber-400 transition-colors">
+                                                {userName}
+                                            </span>
+                                            <span className="text-[10px] text-white/40">
+                                                {user?.role || 'Member'}
+                                            </span>
+                                        </div>
+                                        
+                                        {/* Chevron Icon */}
+                                        <svg className={`w-4 h-4 text-white/40 transition-transform duration-300 ${isProfileDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+
+                                    {/* Profile Dropdown Menu */}
+                                    {isProfileDropdownOpen && (
+                                        <div className="absolute right-0 mt-2 w-64 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                            {/* User Info Header */}
+                                            <div className="px-4 py-4 border-b border-white/5">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-amber-500/20">
+                                                        {userAvatar ? (
+                                                            <img src={userAvatar} alt={userName} className="w-full h-full rounded-xl object-cover" />
+                                                        ) : (
+                                                            getUserInitials()
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-bold text-white">{userName}</p>
+                                                        <p className="text-xs text-white/40">{userEmail}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Menu Items */}
+                                            <div className="py-2">
+                                                <Link
+                                                    href={getRoute('profile.edit')}
+                                                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+                                                    onClick={() => setIsProfileDropdownOpen(false)}
+                                                >
+                                                    <span className="text-lg">👤</span>
+                                                    <span>My Profile</span>
+                                                </Link>
+                                                <Link
+                                                    href={getRoute('profile.settings')}
+                                                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+                                                    onClick={() => setIsProfileDropdownOpen(false)}
+                                                >
+                                                    <span className="text-lg">⚙️</span>
+                                                    <span>Settings</span>
+                                                </Link>
+                                                
+                                                {/* Divider */}
+                                                <div className="my-1 border-t border-white/5"></div>
+                                                
+                                                {/* Logout */}
+                                                <button
+                                                    onClick={handleLogoutClick}
+                                                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors w-full text-left"
+                                                >
+                                                    <span className="text-lg">🚪</span>
+                                                    <span>Logout</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </>
                         ) : (
                             <>
@@ -244,7 +387,7 @@ export default function MainLayout({ children }) {
                         <div className="flex flex-col gap-2">
                             {isLoggedIn ? (
                                 <>
-                                    {/* Become Gym Owner - Mobile (Only when logged in) */}
+                                    {/* Become Gym Owner - Mobile */}
                                     <Link
                                         href={getRoute('owner-applications.create')}
                                         className="text-sm font-bold bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-4 py-3 rounded-xl text-center hover:scale-105 transition-all"
@@ -252,15 +395,47 @@ export default function MainLayout({ children }) {
                                     >
                                         🏪 Become Gym Owner
                                     </Link>
-                                    <button
-                                        onClick={() => {
-                                            router.post(getRoute('logout'));
-                                            setIsMobileMenuOpen(false);
-                                        }}
-                                        className="text-sm font-semibold text-white/80 hover:text-red-400 px-4 py-3 rounded-xl hover:bg-white/5 transition-all text-left"
-                                    >
-                                        Logout
-                                    </button>
+                                    
+                                    {/* Mobile Profile Items */}
+                                    <div className="border-t border-white/5 my-2 pt-2">
+                                        <div className="flex items-center gap-3 px-4 py-2">
+                                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white font-bold shadow-lg shadow-amber-500/20">
+                                                {userAvatar ? (
+                                                    <img src={userAvatar} alt={userName} className="w-full h-full rounded-xl object-cover" />
+                                                ) : (
+                                                    getUserInitials()
+                                                )}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-white">{userName}</p>
+                                                <p className="text-xs text-white/40">{userEmail}</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <Link
+                                            href={getRoute('profile.edit')}
+                                            className="flex items-center gap-3 px-4 py-3 text-sm text-white/80 hover:text-white hover:bg-white/5 rounded-xl transition-all"
+                                            onClick={() => setIsMobileMenuOpen(false)}
+                                        >
+                                            <span>👤</span> My Profile
+                                        </Link>
+                                        <Link
+                                            href={getRoute('profile.settings')}
+                                            className="flex items-center gap-3 px-4 py-3 text-sm text-white/80 hover:text-white hover:bg-white/5 rounded-xl transition-all"
+                                            onClick={() => setIsMobileMenuOpen(false)}
+                                        >
+                                            <span>⚙️</span> Settings
+                                        </Link>
+                                        <button
+                                            onClick={() => {
+                                                handleLogoutClick();
+                                                setIsMobileMenuOpen(false);
+                                            }}
+                                            className="flex items-center gap-3 px-4 py-3 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl transition-all w-full text-left"
+                                        >
+                                            <span>🚪</span> Logout
+                                        </button>
+                                    </div>
                                 </>
                             ) : (
                                 <>
@@ -287,6 +462,66 @@ export default function MainLayout({ children }) {
 
             {/* MAIN CONTENT */}
             <main className="flex-1 relative z-10">{children}</main>
+
+            {/* LOGOUT CONFIRMATION MODAL */}
+            {isLogoutModalOpen && (
+                <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
+                    {/* Backdrop */}
+                    <div 
+                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        onClick={cancelLogout}
+                    ></div>
+                    
+                    {/* Modal */}
+                    <div className="relative max-w-md w-full bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl p-6 animate-in fade-in zoom-in duration-200">
+                        {/* Icon */}
+                        <div className="flex justify-center mb-4">
+                            <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                                <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                </svg>
+                            </div>
+                        </div>
+
+                        {/* Title & Description */}
+                        <h3 className="text-xl font-bold text-white text-center mb-2">Logout Confirmation</h3>
+                        <p className="text-sm text-slate-400 text-center mb-6">
+                            Are you sure you want to logout? You'll need to sign in again to access your account.
+                        </p>
+
+                        {/* User Info */}
+                        <div className="bg-white/5 rounded-xl p-3 mb-6 flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-amber-500/20">
+                                {userAvatar ? (
+                                    <img src={userAvatar} alt={userName} className="w-full h-full rounded-xl object-cover" />
+                                ) : (
+                                    getUserInitials()
+                                )}
+                            </div>
+                            <div>
+                                <p className="text-sm font-semibold text-white">{userName}</p>
+                                <p className="text-xs text-slate-400">{userEmail}</p>
+                            </div>
+                        </div>
+
+                        {/* Buttons */}
+                        <div className="flex gap-3">
+                            <button
+                                onClick={cancelLogout}
+                                className="flex-1 px-4 py-2.5 rounded-xl border border-white/10 text-white/70 hover:text-white hover:bg-white/5 transition-all duration-200 font-medium text-sm"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmLogout}
+                                className="flex-1 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold text-sm shadow-lg shadow-red-500/20 transition-all duration-200 hover:scale-105"
+                            >
+                                Yes, Logout
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* FOOTER */}
             <footer className="bg-black/40 backdrop-blur-lg border-t border-white/5 py-8 md:py-12 relative z-10">
