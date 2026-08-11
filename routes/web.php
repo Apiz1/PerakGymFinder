@@ -8,6 +8,7 @@ use App\Http\Controllers\GymOwnerApplicationController;
 use App\Http\Controllers\Owner\CreateGymController;
 use App\Http\Controllers\Owner\EditGymController;
 use App\Http\Controllers\Owner\GymOwnerController;
+use App\Http\Controllers\Owner\PhotoGymController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -73,6 +74,10 @@ Route::middleware(['auth', 'role:gym_owner,super_admin'])->prefix('owner')->name
     Route::post('/gym', [CreateGymController::class, 'store'])->name('gym.store');
     Route::get('/gym/edit', [EditGymController::class, 'edit'])->name('gym.edit');
     Route::put('/gym', [EditGymController::class, 'update'])->name('gym.update');
+    Route::get('/gym/photos', [PhotoGymController::class, 'index'])->name('gym.photos.index');
+    Route::post('/gym/photos', [PhotoGymController::class, 'store'])->name('gym.photos.store');
+    Route::post('/gym/photos/{image}/primary', [PhotoGymController::class, 'setPrimary'])->name('gym.photos.primary');
+    Route::delete('/gym/photos/{image}', [PhotoGymController::class, 'destroy'])->name('gym.photos.destroy');
 });
 
 require __DIR__.'/auth.php';
