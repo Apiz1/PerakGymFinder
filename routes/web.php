@@ -8,6 +8,7 @@ use App\Http\Controllers\GymOwnerApplicationController;
 use App\Http\Controllers\Owner\CreateGymController;
 use App\Http\Controllers\Owner\EditGymController;
 use App\Http\Controllers\Owner\GymOwnerController;
+use App\Http\Controllers\Owner\OwnerGymOperatingHourController;
 use App\Http\Controllers\Owner\PhotoGymController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -78,6 +79,8 @@ Route::middleware(['auth', 'role:gym_owner,super_admin'])->prefix('owner')->name
     Route::post('/gym/photos', [PhotoGymController::class, 'store'])->name('gym.photos.store');
     Route::post('/gym/photos/{image}/primary', [PhotoGymController::class, 'setPrimary'])->name('gym.photos.primary');
     Route::delete('/gym/photos/{image}', [PhotoGymController::class, 'destroy'])->name('gym.photos.destroy');
+    Route::get('/gym/hours', [OwnerGymOperatingHourController::class, 'edit'])->name('gym.hours.edit');
+    Route::put('/gym/hours', [OwnerGymOperatingHourController::class, 'update'])->name('gym.hours.update');
 });
 
 require __DIR__.'/auth.php';

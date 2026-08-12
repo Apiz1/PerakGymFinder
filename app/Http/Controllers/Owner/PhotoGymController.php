@@ -29,6 +29,7 @@ class PhotoGymController extends Controller
         }
 
         return Inertia::render('Owner/Gym/Photos', [
+            'gym' => $gym->only(['id', 'name', 'status']),
             'images' => $gym->images()->orderBy('sort_order')->get(),
             'maxImages' => self::MAX_IMAGES,
         ]);

@@ -223,7 +223,7 @@ export default function Dashboard({ gym = null, metrics = {}, recentReviews = []
                     </div>
 
                     {/* Quick Actions & Tips */}
-                    <div className="space-y-6">
+                   <div className="space-y-6">
                         {/* Quick Actions Card */}
                         <div className="bg-slate-900/80 border border-slate-800/80 rounded-2xl overflow-hidden shadow-xl">
                             <div className="p-5 border-b border-slate-800/80 bg-slate-900/40">
@@ -237,8 +237,9 @@ export default function Dashboard({ gym = null, metrics = {}, recentReviews = []
                                 </div>
                             </div>
                             <div className="p-5 space-y-3">
-                                <button
-                                    onClick={() => handleQuickAction('edit', 'Open gym editor?')}
+                                {/* Edit Gym Details - Uses route helper */}
+                                <Link
+                                    href={route('owner.gym.edit')}
                                     className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 transition group"
                                 >
                                     <span className="text-xs font-medium text-slate-300 group-hover:text-white">
@@ -247,9 +248,11 @@ export default function Dashboard({ gym = null, metrics = {}, recentReviews = []
                                     <span className="text-xs text-slate-500 group-hover:text-amber-400 transition">
                                         Update →
                                     </span>
-                                </button>
-                                <button
-                                    onClick={() => handleQuickAction('photos', 'Open photo manager?')}
+                                </Link>
+
+                                {/* Manage Photos - Uses route helper */}
+                                <Link
+                                    href={route('owner.gym.photos.index')}
                                     className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 transition group"
                                 >
                                     <span className="text-xs font-medium text-slate-300 group-hover:text-white">
@@ -258,7 +261,9 @@ export default function Dashboard({ gym = null, metrics = {}, recentReviews = []
                                     <span className="text-xs text-slate-500 group-hover:text-amber-400 transition">
                                         Upload →
                                     </span>
-                                </button>
+                                </Link>
+
+                                {/* Update Operating Hours - Placeholder */}
                                 <button
                                     onClick={() => handleQuickAction('hours', 'Open hours manager?')}
                                     className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 transition group"
@@ -270,6 +275,8 @@ export default function Dashboard({ gym = null, metrics = {}, recentReviews = []
                                         Update →
                                     </span>
                                 </button>
+
+                                {/* Manage Membership Plans - Placeholder */}
                                 <button
                                     onClick={() => handleQuickAction('plans', 'Open plans manager?')}
                                     className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 transition group"
