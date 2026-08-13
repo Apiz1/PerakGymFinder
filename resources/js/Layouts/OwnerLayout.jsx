@@ -41,13 +41,13 @@ export default function OwnerLayout({ children, title = 'Owner Dashboard' }) {
         },
         { 
             name: 'Facilities & Categories', 
-            path: '/owner/gym/tags', 
+            path: '/owner/gym/facilities', 
             icon: '🏷️',
             requiresGym: true
         },
         { 
             name: 'Membership Plans', 
-            path: '/owner/gym/plans', 
+            path: '/owner/gym/memberships', 
             icon: '💳',
             requiresGym: true
         },

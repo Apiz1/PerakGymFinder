@@ -263,9 +263,9 @@ export default function Dashboard({ gym = null, metrics = {}, recentReviews = []
                                     </span>
                                 </Link>
 
-                                {/* Update Operating Hours - Placeholder */}
-                                <button
-                                    onClick={() => handleQuickAction('hours', 'Open hours manager?')}
+                                {/* Update Operating Hours */}
+                                <Link
+                                    href={route('owner.gym.hours.edit')}
                                     className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 transition group"
                                 >
                                     <span className="text-xs font-medium text-slate-300 group-hover:text-white">
@@ -274,11 +274,11 @@ export default function Dashboard({ gym = null, metrics = {}, recentReviews = []
                                     <span className="text-xs text-slate-500 group-hover:text-amber-400 transition">
                                         Update →
                                     </span>
-                                </button>
+                                </Link>
 
-                                {/* Manage Membership Plans - Placeholder */}
-                                <button
-                                    onClick={() => handleQuickAction('plans', 'Open plans manager?')}
+                                {/* Manage Membership Plans */}
+                                <Link
+                                    href={route('owner.gym.memberships.index')}
                                     className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 transition group"
                                 >
                                     <span className="text-xs font-medium text-slate-300 group-hover:text-white">
@@ -287,7 +287,7 @@ export default function Dashboard({ gym = null, metrics = {}, recentReviews = []
                                     <span className="text-xs text-slate-500 group-hover:text-amber-400 transition">
                                         Manage →
                                     </span>
-                                </button>
+                                </Link>
                             </div>
                         </div>
 

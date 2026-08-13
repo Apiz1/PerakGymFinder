@@ -8,7 +8,10 @@ use App\Http\Controllers\GymOwnerApplicationController;
 use App\Http\Controllers\Owner\CreateGymController;
 use App\Http\Controllers\Owner\EditGymController;
 use App\Http\Controllers\Owner\GymOwnerController;
+use App\Http\Controllers\Owner\OwnerFacilitiesController;
 use App\Http\Controllers\Owner\OwnerGymOperatingHourController;
+use App\Http\Controllers\Owner\OwnerMembershipController;
+use App\Http\Controllers\Owner\OwnerReviewController;
 use App\Http\Controllers\Owner\PhotoGymController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -81,6 +84,16 @@ Route::middleware(['auth', 'role:gym_owner,super_admin'])->prefix('owner')->name
     Route::delete('/gym/photos/{image}', [PhotoGymController::class, 'destroy'])->name('gym.photos.destroy');
     Route::get('/gym/hours', [OwnerGymOperatingHourController::class, 'edit'])->name('gym.hours.edit');
     Route::put('/gym/hours', [OwnerGymOperatingHourController::class, 'update'])->name('gym.hours.update');
+    Route::get('/gym/facilities', [OwnerFacilitiesController::class, 'edit'])->name('gym.facilities.edit');
+    Route::put('/gym/facilities', [OwnerFacilitiesController::class, 'update'])->name('gym.facilities.update');
+    Route::get('/gym/memberships', [OwnerMembershipController::class, 'index'])->name('gym.memberships.index');
+    Route::post('/gym/memberships', [OwnerMembershipController::class, 'store'])->name('gym.memberships.store');
+    Route::put('/gym/memberships/{membershipPlan}', [OwnerMembershipController::class, 'update'])->name('gym.memberships.update');
+    Route::post('/gym/memberships/{membershipPlan}/toggle', [OwnerMembershipController::class, 'toggleActive'])->name('gym.memberships.toggle');
+    Route::delete('/gym/memberships/{membershipPlan}', [OwnerMembershipController::class, 'destroy'])->name('gym.memberships.destroy');
+    Route::get('/gym/reviews', [OwnerReviewController::class, 'index'])->name('gym.reviews.index');
+    Route::post('/gym/reviews/{review}/reply', [OwnerReviewController::class, 'storeReply'])->name('gym.reviews.reply.store');
+    Route::put('/gym/reviews/{review}/reply', [OwnerReviewController::class, 'updateReply'])->name('gym.reviews.reply.update');
 });
 
 require __DIR__.'/auth.php';
