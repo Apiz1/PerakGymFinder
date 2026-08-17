@@ -3,6 +3,9 @@
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\AdminGymController;
 use App\Http\Controllers\Admin\AdminGymOwnerApplicationController;
+use App\Http\Controllers\Admin\AdminReportController;
+use App\Http\Controllers\Admin\AdminReviewController;
+use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\GymController;
 use App\Http\Controllers\GymOwnerApplicationController;
 use App\Http\Controllers\Owner\CreateGymController;
@@ -64,6 +67,22 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->name('admin.')
     Route::get('owner-applications/{ownerApplication}/document', [AdminGymOwnerApplicationController::class, 'downloadDocument'])->name('owner-applications.document');
     Route::post('owner-applications/{ownerApplication}/approve', [AdminGymOwnerApplicationController::class, 'approve'])->name('owner-applications.approve');
     Route::post('owner-applications/{ownerApplication}/reject', [AdminGymOwnerApplicationController::class, 'reject'])->name('owner-applications.reject');
+
+    Route::get('reviews', [AdminReviewController::class, 'index'])->name('reviews.index');
+    Route::post('reviews/{review}/approve', [AdminReviewController::class, 'approve'])->name('reviews.approve');
+    Route::post('reviews/{review}/flag', [AdminReviewController::class, 'flag'])->name('reviews.flag');
+    Route::delete('reviews/{review}', [AdminReviewController::class, 'destroy'])->name('reviews.destroy');
+
+    Route::get('users', [AdminUserController::class, 'index'])->name('users.index');
+    Route::get('users/{user}', [AdminUserController::class, 'show'])->name('users.show');
+    Route::put('users/{user}', [AdminUserController::class, 'update'])->name('users.update');
+    Route::post('users/{user}/role', [AdminUserController::class, 'updateRole'])->name('users.role');
+    Route::post('users/{user}/toggle-active', [AdminUserController::class, 'toggleActive'])->name('users.toggle-active');
+
+    Route::get('reports', [AdminReportController::class, 'index'])->name('reports.index');
+    Route::get('reports/{report}', [AdminReportController::class, 'show'])->name('reports.show');
+    Route::post('reports/{report}/resolve', [AdminReportController::class, 'resolve'])->name('reports.resolve');
+    Route::post('reports/{report}/dismiss', [AdminReportController::class, 'dismiss'])->name('reports.dismiss');
 });
 
 /*

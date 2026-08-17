@@ -63,11 +63,15 @@ export default function Show({ gym }) {
             <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden backdrop-blur-sm">
                 <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 relative z-10">
                     <div className="flex items-start gap-4">
-                        {gym.images && gym.images.length > 0 ? (
+                       {gym.images && gym.images.length > 0 ? (
                             <img
-                                src={gym.images[0].image_path || gym.images[0].url}
+                                src={gym.images[0].url || gym.images[0].image_path}
                                 alt={gym.name}
                                 className="w-20 h-20 rounded-xl object-cover border border-slate-700/80 shadow-md flex-shrink-0"
+                                onError={(e) => {
+                                    // Fallback to placeholder if image fails to load
+                                    e.target.src = 'https://via.placeholder.com/80x80?text=🏋️';
+                                }}
                             />
                         ) : (
                             <div className="w-20 h-20 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-3xl text-slate-500 flex-shrink-0">
@@ -208,15 +212,19 @@ export default function Show({ gym }) {
                                         {gym.images.map((img, idx) => (
                                             <a
                                                 key={idx}
-                                                href={img.image_path || img.url}
+                                                href={img.url || img.image_path}
                                                 target="_blank"
                                                 rel="noreferrer"
                                                 className="group relative rounded-xl overflow-hidden border border-slate-800 aspect-video bg-slate-950"
                                             >
                                                 <img
-                                                    src={img.image_path || img.url}
+                                                    src={img.url || img.image_path}
                                                     alt="Gym upload"
                                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                                    onError={(e) => {
+                                                        // Fallback to placeholder if image fails to load
+                                                        e.target.src = 'https://via.placeholder.com/600x400?text=GymFinder+Perak';
+                                                    }}
                                                 />
                                             </a>
                                         ))}
@@ -321,28 +329,58 @@ export default function Show({ gym }) {
 
                 {/* TAB 3: OPERATING HOURS */}
                 {activeTab === 'hours' && (
-                    <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden p-6">
-                        <h3 className="text-sm font-bold text-white uppercase tracking-wider text-slate-400 mb-4">Weekly Schedule</h3>
-                        {gym.operating_hours && gym.operating_hours.length > 0 ? (
+                <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden p-6">
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider text-slate-400 mb-4">Weekly Schedule</h3>
+                    
+                    {/* Days of week in order */}
+                    {(() => {
+                        const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                        
+                        // Create a map of existing hours by day name
+                        const hoursMap = {};
+                        if (gym.operating_hours && gym.operating_hours.length > 0) {
+                            gym.operating_hours.forEach(oh => {
+                                // If day_of_week is stored as number (0-6), convert to day name
+                                const dayName = typeof oh.day_of_week === 'number' 
+                                    ? ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][oh.day_of_week]
+                                    : oh.day_of_week;
+                                hoursMap[dayName] = oh;
+                            });
+                        }
+
+                        const hasHours = Object.keys(hoursMap).length > 0;
+
+                        return (
                             <div className="divide-y divide-slate-800/80 text-xs">
-                                {gym.operating_hours.map((oh, idx) => (
-                                    <div key={idx} className="py-3 flex justify-between items-center">
-                                        <span className="font-bold text-slate-200 capitalize">{oh.day_of_week}</span>
-                                        {oh.is_closed ? (
-                                            <span className="text-rose-400 font-bold bg-rose-500/10 px-2 py-0.5 rounded">Closed</span>
-                                        ) : (
-                                            <span className="font-mono text-slate-400">
-                                                {oh.opening_time} - {oh.closing_time}
-                                            </span>
-                                        )}
+                                {daysOfWeek.map((day) => {
+                                    const hour = hoursMap[day];
+                                    return (
+                                        <div key={day} className="py-3 flex justify-between items-center">
+                                            <span className="font-bold text-slate-200 capitalize">{day}</span>
+                                            {hour ? (
+                                                hour.is_closed ? (
+                                                    <span className="text-rose-400 font-bold bg-rose-500/10 px-2 py-0.5 rounded">Closed</span>
+                                                ) : (
+                                                    <span className="font-mono text-slate-400">
+                                                        {hour.opening_time} - {hour.closing_time}
+                                                    </span>
+                                                )
+                                            ) : (
+                                                <span className="text-slate-500 italic">Not set</span>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                                {!hasHours && (
+                                    <div className="py-4 text-center">
+                                        <p className="text-xs text-slate-500">No operating hours recorded.</p>
                                     </div>
-                                ))}
+                                )}
                             </div>
-                        ) : (
-                            <p className="text-xs text-slate-500">No operating hours recorded.</p>
-                        )}
-                    </div>
-                )}
+                        );
+                    })()}
+                </div>
+            )}
 
                 {/* TAB 4: MEMBERSHIP PLANS */}
                 {activeTab === 'plans' && (

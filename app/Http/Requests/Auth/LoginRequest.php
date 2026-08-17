@@ -50,6 +50,18 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        // Credentials were correct, but an admin has deactivated this account
+        // (see AdminUserController::toggleActive). Log them straight back out —
+        // Auth::attempt() already established a session before we could check
+        // is_active, so this undoes that.
+        if (! Auth::user()->is_active) {
+            Auth::logout();
+
+            throw ValidationException::withMessages([
+                'email' => 'This account has been deactivated. Please contact support.',
+            ]);
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 
