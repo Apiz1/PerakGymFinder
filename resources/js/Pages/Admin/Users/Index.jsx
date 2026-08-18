@@ -6,6 +6,8 @@ export default function Index({ users, filters, roleCounts }) {
     const [search, setSearch] = useState(filters.search || '');
     const [processingId, setProcessingId] = useState(null);
     const [notification, setNotification] = useState(null);
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [confirmData, setConfirmData] = useState(null);
     const isFirstRender = useRef(true);
 
     // Filter role tabs helper
@@ -37,7 +39,6 @@ export default function Index({ users, filters, roleCounts }) {
         }
     }, [notification]);
 
-
     // Role Badge Component Helper - Improved with better text visibility
     const renderRoleBadge = (role) => {
         switch (role) {
@@ -68,6 +69,52 @@ export default function Index({ users, filters, roleCounts }) {
         }
     };
 
+    // Open confirmation modal for toggle active
+    const confirmToggleActive = (userId, currentStatus, userName) => {
+        const action = currentStatus ? 'deactivate' : 'activate';
+        setConfirmData({
+            userId,
+            currentStatus,
+            userName,
+            action
+        });
+        setShowConfirmModal(true);
+    };
+
+    // Handle toggle active after confirmation
+    const handleToggleActive = () => {
+        if (!confirmData) return;
+
+        const { userId, currentStatus, userName } = confirmData;
+        const action = currentStatus ? 'deactivate' : 'activate';
+
+        setProcessingId(userId);
+        setShowConfirmModal(false);
+
+        router.post(
+            route('admin.users.toggle-active', userId),
+            {},
+            {
+                onFinish: () => setProcessingId(null),
+                preserveScroll: true,
+                onSuccess: () => {
+                    setNotification({
+                        type: 'success',
+                        message: currentStatus ? 'Account deactivated.' : 'Account activated.'
+                    });
+                    setConfirmData(null);
+                },
+                onError: (errors) => {
+                    setNotification({
+                        type: 'error',
+                        message: errors.message || 'Failed to toggle account status.'
+                    });
+                    setConfirmData(null);
+                }
+            }
+        );
+    };
+
     // Quick Action Handlers
     const handleUpdateRole = (userId, role, confirmMessage) => {
         if (confirmMessage && !confirm(confirmMessage)) return;
@@ -89,33 +136,6 @@ export default function Index({ users, filters, roleCounts }) {
                     setNotification({
                         type: 'error',
                         message: errors.message || 'Failed to update role.'
-                    });
-                }
-            }
-        );
-    };
-
-    const handleToggleActive = (userId, currentStatus) => {
-        const action = currentStatus ? 'deactivate' : 'activate';
-        if (!confirm(`Are you sure you want to ${action} this account?`)) return;
-
-        setProcessingId(userId);
-        router.post(
-            route('admin.users.toggle-active', userId),
-            {},
-            {
-                onFinish: () => setProcessingId(null),
-                preserveScroll: true,
-                onSuccess: () => {
-                    setNotification({
-                        type: 'success',
-                        message: currentStatus ? 'Account deactivated.' : 'Account activated.'
-                    });
-                },
-                onError: (errors) => {
-                    setNotification({
-                        type: 'error',
-                        message: errors.message || 'Failed to toggle account status.'
                     });
                 }
             }
@@ -156,6 +176,26 @@ export default function Index({ users, filters, roleCounts }) {
         { value: 'gym_owner', label: 'Gym Owner' },
         { value: 'super_admin', label: 'Super Admin' },
     ];
+
+    // Get modal content
+    const getModalContent = () => {
+        if (!confirmData) return null;
+        const { action, userName } = confirmData;
+        const isDeactivate = action === 'deactivate';
+        return {
+            title: isDeactivate ? 'Deactivate Account' : 'Activate Account',
+            message: `Are you sure you want to ${action} "${userName}"'s account?${
+                isDeactivate ? ' They will not be able to log in until reactivated.' : ' They will regain full access to their account.'
+            }`,
+            icon: isDeactivate ? '⏸️' : '▶️',
+            buttonText: isDeactivate ? 'Yes, Deactivate' : 'Yes, Activate',
+            buttonColor: isDeactivate 
+                ? 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700'
+                : 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700'
+        };
+    };
+
+    const modalContent = getModalContent();
 
     return (
         <div className="space-y-6 pb-12">
@@ -343,11 +383,11 @@ export default function Index({ users, filters, roleCounts }) {
                                                     </select>
                                                 )}
 
-                                                {/* Toggle Active */}
+                                                {/* Toggle Active - Opens confirmation modal */}
                                                 {user.id !== window._auth?.user?.id && (
                                                     <button
                                                         disabled={processingId === user.id}
-                                                        onClick={() => handleToggleActive(user.id, user.is_active)}
+                                                        onClick={() => confirmToggleActive(user.id, user.is_active, user.name)}
                                                         className={`px-3 py-1.5 rounded-lg font-bold transition-all text-xs disabled:opacity-50 ${
                                                             user.is_active
                                                                 ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500 hover:text-slate-950'
@@ -435,6 +475,80 @@ export default function Index({ users, filters, roleCounts }) {
                     </div>
                 </div>
             </div>
+
+            {/* Confirmation Modal */}
+            {showConfirmModal && modalContent && (
+                <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
+                    {/* Backdrop */}
+                    <div 
+                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        onClick={() => {
+                            setShowConfirmModal(false);
+                            setConfirmData(null);
+                        }}
+                    ></div>
+                    
+                    {/* Modal */}
+                    <div className="relative max-w-md w-full bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl p-6 animate-in fade-in zoom-in duration-200">
+                        {/* Icon */}
+                        <div className="flex justify-center mb-4">
+                            <div className={`w-16 h-16 rounded-full flex items-center justify-center ${
+                                confirmData?.action === 'deactivate' 
+                                    ? 'bg-amber-500/10 border border-amber-500/20' 
+                                    : 'bg-emerald-500/10 border border-emerald-500/20'
+                            }`}>
+                                <span className={`text-3xl ${
+                                    confirmData?.action === 'deactivate' ? 'text-amber-400' : 'text-emerald-400'
+                                }`}>
+                                    {modalContent.icon}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Title & Description */}
+                        <h3 className="text-xl font-bold text-white text-center mb-2">
+                            {modalContent.title}
+                        </h3>
+                        <p className="text-sm text-slate-400 text-center mb-6">
+                            {modalContent.message}
+                        </p>
+
+                        {/* User Info */}
+                        {confirmData && (
+                            <div className="bg-white/5 rounded-xl p-3 mb-6 flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-amber-500/20">
+                                    {confirmData.userName?.charAt(0) || 'U'}
+                                </div>
+                                <div>
+                                    <p className="text-sm font-semibold text-white">{confirmData.userName}</p>
+                                    <p className="text-xs text-slate-400">
+                                        Current status: {confirmData.currentStatus ? 'Active' : 'Inactive'}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Buttons */}
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => {
+                                    setShowConfirmModal(false);
+                                    setConfirmData(null);
+                                }}
+                                className="flex-1 px-4 py-2.5 rounded-xl border border-white/10 text-white/70 hover:text-white hover:bg-white/5 transition-all duration-200 font-medium text-sm"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleToggleActive}
+                                className={`flex-1 px-4 py-2.5 rounded-xl text-white font-bold text-sm shadow-lg transition-all duration-200 hover:scale-105 ${modalContent.buttonColor}`}
+                            >
+                                {modalContent.buttonText}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

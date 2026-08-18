@@ -6,8 +6,13 @@ import MainLayout from '@/Layouts/MainLayout';
 export default function Home({ gyms = {}, filters = {}, categories = [], facilities = [] }) {
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
     const [selectedCategory, setSelectedCategory] = useState(filters.category_id || '');
+    const [selectedDistrict, setSelectedDistrict] = useState('');
+    const [selectedCity, setSelectedCity] = useState('');
+    const [selectedFacilities, setSelectedFacilities] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+    const [viewMode, setViewMode] = useState('grid');
+    const [sortBy, setSortBy] = useState('rating');
+    const [showMoreFilters, setShowMoreFilters] = useState(false);
     const [backgroundIndex, setBackgroundIndex] = useState(0);
     const [gymImages, setGymImages] = useState({});
 
@@ -69,15 +74,9 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
     // Get random image for a gym
     const getGymImage = (gymId) => {
         if (gymImages[gymId]) return gymImages[gymId];
-        
         const index = gymId % gymImageUrls.length;
         const imageUrl = gymImageUrls[index];
-        
-        setGymImages(prev => ({
-            ...prev,
-            [gymId]: imageUrl
-        }));
-        
+        setGymImages(prev => ({ ...prev, [gymId]: imageUrl }));
         return imageUrl;
     };
 
@@ -91,10 +90,16 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
 
     // Debounced search for better UX
     const debouncedSearch = useCallback(
-        debounce((term, category) => {
+        debounce((term, category, district, city, facilities) => {
             router.get(
                 '/',
-                { search: term, category_id: category },
+                { 
+                    search: term, 
+                    category_id: category,
+                    district: district,
+                    city: city,
+                    facilities: facilities.join(',')
+                },
                 { preserveState: true, replace: true }
             );
         }, 300),
@@ -107,7 +112,13 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
         setIsLoading(true);
         router.get(
             '/',
-            { search: searchTerm, category_id: selectedCategory },
+            { 
+                search: searchTerm, 
+                category_id: selectedCategory,
+                district: selectedDistrict,
+                city: selectedCity,
+                facilities: selectedFacilities.join(',')
+            },
             { 
                 preserveState: true, 
                 replace: true,
@@ -122,12 +133,37 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
         setIsLoading(true);
         router.get(
             '/',
-            { search: searchTerm, category_id: categoryId },
+            { 
+                search: searchTerm, 
+                category_id: categoryId,
+                district: selectedDistrict,
+                city: selectedCity,
+                facilities: selectedFacilities.join(',')
+            },
             { 
                 preserveState: true,
                 onFinish: () => setIsLoading(false)
             }
         );
+    };
+
+    // Toggle facility selection
+    const toggleFacility = (facilityId) => {
+        setSelectedFacilities(prev => 
+            prev.includes(facilityId)
+                ? prev.filter(id => id !== facilityId)
+                : [...prev, facilityId]
+        );
+    };
+
+    // Clear all filters
+    const clearFilters = () => {
+        setSelectedCategory('');
+        setSelectedDistrict('');
+        setSelectedCity('');
+        setSelectedFacilities([]);
+        setSearchTerm('');
+        handleSearch(new Event('submit'));
     };
 
     // Extract Paginated Gym Items
@@ -143,6 +179,9 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
         const newIndex = (backgroundIndex + 1) % backgrounds.length;
         setBackgroundIndex(newIndex);
     };
+
+    // Check if any filters are active
+    const hasActiveFilters = selectedCategory || selectedDistrict || selectedCity || selectedFacilities.length > 0;
 
     return (
         <MainLayout>
@@ -244,7 +283,7 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                     </div>
 
                     {/* HERO SECTION */}
-                    <div className="text-center max-w-3xl mx-auto pt-6 pb-12">
+                    <div className="text-center max-w-4xl mx-auto pt-6 pb-8">
                         <span className="inline-block px-4 py-1.5 rounded-full bg-black/20 backdrop-blur-md border border-white/10 text-white/90 text-xs font-bold uppercase tracking-wider mb-6 animate-pulse">
                             🏆 Malaysia • Perak Edition
                         </span>
@@ -254,13 +293,13 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                                 Iron Paradise
                             </span>
                         </h1>
-                        <p className="text-white/80 text-base sm:text-lg mb-10 leading-relaxed max-w-2xl mx-auto drop-shadow-lg">
+                        <p className="text-white/80 text-base sm:text-lg mb-8 leading-relaxed max-w-2xl mx-auto drop-shadow-lg">
                             Explore local fitness centers, commercial gyms, and strength clubs in Perak 
                             with complete reviews, map directions, and WhatsApp contacts.
                         </p>
 
                         {/* STATS BADGES */}
-                        <div className="flex flex-wrap justify-center gap-4 mb-10">
+                        <div className="flex flex-wrap justify-center gap-4 mb-8">
                             <div className="glass-card px-6 py-3 rounded-xl backdrop-blur-xl bg-white/5 border-white/10">
                                 <span className="text-2xl font-bold text-amber-400">{totalGyms}</span>
                                 <span className="text-xs text-white/70 ml-2">Gyms</span>
@@ -278,7 +317,7 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                         </div>
 
                         {/* CENTERED SEARCH BAR */}
-                        <form onSubmit={handleSearch} className="hero-search-wrapper max-w-2xl mx-auto">
+                        <form onSubmit={handleSearch} className="hero-search-wrapper max-w-3xl mx-auto">
                             <div className="relative flex items-center">
                                 <div className="absolute left-4 text-white/50">
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -291,10 +330,10 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                                     onChange={(e) => {
                                         setSearchTerm(e.target.value);
                                         if (e.target.value.length > 2) {
-                                            debouncedSearch(e.target.value, selectedCategory);
+                                            debouncedSearch(e.target.value, selectedCategory, selectedDistrict, selectedCity, selectedFacilities);
                                         }
                                     }}
-                                    placeholder="Search by town, district or gym name (e.g. Ipoh, Taiping)..."
+                                    placeholder="Search by gym name, town, or district..."
                                     className="search-input w-full text-white placeholder-white/50 pl-12 pr-36 py-4 rounded-2xl text-sm sm:text-base focus:outline-none backdrop-blur-xl bg-black/30 border-white/20"
                                 />
                                 {searchTerm && (
@@ -302,7 +341,7 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                                         type="button"
                                         onClick={() => {
                                             setSearchTerm('');
-                                            debouncedSearch('', selectedCategory);
+                                            debouncedSearch('', selectedCategory, selectedDistrict, selectedCity, selectedFacilities);
                                         }}
                                         className="absolute right-28 text-white/50 hover:text-white transition-colors"
                                     >
@@ -314,7 +353,7 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                                 <button
                                     type="submit"
                                     disabled={isLoading}
-                                    className="search-btn absolute right-2 text-slate-950 font-bold px-7 py-3 rounded-xl text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="search-btn absolute right-2 text-white font-bold px-7 py-3 rounded-xl text-sm disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50 transition-all duration-300"
                                 >
                                     {isLoading ? 'Searching...' : 'Search'}
                                 </button>
@@ -322,8 +361,8 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                         </form>
 
                         {/* POPULAR SEARCHES */}
-                        <div className="mt-6">
-                            <p className="text-xs text-white/60 mb-2">Popular searches:</p>
+                        <div className="mt-4">
+                            <p className="text-xs text-white/50 mb-2">Popular searches:</p>
                             <div className="flex flex-wrap justify-center gap-2">
                                 {['Ipoh', 'Taiping', 'Kampar', 'Sitiawan'].map((term) => (
                                     <button
@@ -339,36 +378,154 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                                 ))}
                             </div>
                         </div>
+                    </div>
 
-                        {/* CATEGORY CHIPS */}
-                        {categories.length > 0 && (
-                            <div className="flex flex-wrap justify-center gap-2 mt-8">
-                                <button
-                                    onClick={() => handleCategoryFilter('')}
-                                    className={`filter-chip px-4 py-1.5 rounded-xl text-xs font-semibold backdrop-blur-xl ${
-                                        !selectedCategory ? 'active bg-amber-500/20 text-amber-400 border-amber-500/50' : 'text-white/70 bg-black/20 border-white/10'
-                                    }`}
-                                >
-                                    All Gyms
-                                </button>
-                                {categories.map((cat) => (
-                                    <button
-                                        key={cat.id}
-                                        onClick={() => handleCategoryFilter(cat.id)}
-                                        className={`filter-chip px-4 py-1.5 rounded-xl text-xs font-semibold backdrop-blur-xl ${
-                                            selectedCategory == cat.id ? 'active bg-amber-500/20 text-amber-400 border-amber-500/50' : 'text-white/70 bg-black/20 border-white/10'
-                                        }`}
+                    {/* FILTERS SECTION */}
+                    <div className="mb-8">
+                        <div className="bg-black/20 backdrop-blur-md border border-white/10 rounded-2xl p-4">
+                            {/* Filter Row */}
+                            <div className="flex flex-wrap items-center gap-3">
+                                <span className="text-xs text-white/50 font-semibold">Filters:</span>
+                                
+                                {/* Category Filter */}
+                                {categories.length > 0 && (
+                                <div className="relative">
+                                    <select
+                                        value={selectedCategory}
+                                        onChange={(e) => handleCategoryFilter(e.target.value)}
+                                        className="bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 text-white text-xs rounded-xl px-4 py-2 pr-8 focus:outline-none focus:border-amber-500/70 focus:ring-2 focus:ring-amber-500/20 transition-all cursor-pointer appearance-none min-w-[140px]"
+                                        style={{
+                                            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+                                            backgroundRepeat: 'no-repeat',
+                                            backgroundPosition: 'right 10px center',
+                                            backgroundSize: '10px'
+                                        }}
                                     >
-                                        {cat.name}
+                                        <option value="" className="bg-slate-800 text-white">All Categories</option>
+                                        {categories.map((cat) => (
+                                            <option key={cat.id} value={cat.id} className="bg-slate-800 text-white hover:bg-slate-700">
+                                                {cat.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+                                {/* District Filter */}
+                                <div className="relative">
+                                    <select
+                                        value={selectedDistrict}
+                                        onChange={(e) => {
+                                            setSelectedDistrict(e.target.value);
+                                            handleSearch(new Event('submit'));
+                                        }}
+                                        className="bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 text-slate-200 text-xs rounded-xl px-4 py-2 pr-8 focus:outline-none focus:border-amber-500/70 focus:ring-2 focus:ring-amber-500/20 transition-all cursor-pointer appearance-none min-w-[140px] font-medium"
+                                    >
+                                        <option value="">All Districts</option>
+                                        {/* Districts would come from your data */}
+                                        <option value="Kinta">Kinta</option>
+                                        <option value="Larut Matang">Larut Matang</option>
+                                        <option value="Manjung">Manjung</option>
+                                    </select>
+                                </div>
+
+                                {/* City Filter */}
+                                <div className="relative">
+                                    <select
+                                        value={selectedCity}
+                                        onChange={(e) => {
+                                            setSelectedCity(e.target.value);
+                                            handleSearch(new Event('submit'));
+                                        }}
+                                       className="bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 text-slate-200 text-xs rounded-xl px-4 py-2 pr-8 focus:outline-none focus:border-amber-500/70 focus:ring-2 focus:ring-amber-500/20 transition-all cursor-pointer appearance-none min-w-[140px] font-medium"
+                                    >
+                                        <option value="">All Cities</option>
+                                        {/* Cities would come from your data */}
+                                        <option value="Ipoh">Ipoh</option>
+                                        <option value="Taiping">Taiping</option>
+                                        <option value="Sitiawan">Sitiawan</option>
+                                    </select>
+                                </div>
+
+                                {/* More Filters Toggle */}
+                                <button
+                                    onClick={() => setShowMoreFilters(!showMoreFilters)}
+                                    className="text-xs text-white/50 hover:text-white/80 transition px-2 py-1"
+                                >
+                                    {showMoreFilters ? 'Less Filters ▲' : 'More Filters ▼'}
+                                </button>
+
+                                {/* Clear Filters */}
+                                {hasActiveFilters && (
+                                    <button
+                                        onClick={clearFilters}
+                                        className="text-xs text-amber-400 hover:text-amber-300 transition px-2 py-1"
+                                    >
+                                        Clear All ✕
                                     </button>
-                                ))}
+                                )}
                             </div>
-                        )}
+
+                            {/* More Filters - Facilities */}
+                            {showMoreFilters && facilities.length > 0 && (
+                                <div className="mt-3 pt-3 border-t border-white/5">
+                                    <div className="flex flex-wrap gap-2">
+                                        <span className="text-xs text-white/50 font-semibold mr-1">Facilities:</span>
+                                        {facilities.map((facility) => (
+                                            <button
+                                                key={facility.id}
+                                                onClick={() => toggleFacility(facility.id)}
+                                                className={`text-xs px-3 py-1 rounded-full transition-all ${
+                                                    selectedFacilities.includes(facility.id)
+                                                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                                                        : 'bg-white/5 text-white/70 border border-white/10 hover:bg-white/10'
+                                                }`}
+                                            >
+                                                {facility.icon || '🏋️'} {facility.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Active Filter Chips */}
+                            {hasActiveFilters && (
+                                <div className="mt-3 pt-3 border-t border-white/5 flex flex-wrap gap-2">
+                                    <span className="text-xs text-white/50 font-semibold mr-1">Active:</span>
+                                    {selectedCategory && (
+                                        <span className="inline-flex items-center gap-1 text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full">
+                                            {categories.find(c => c.id == selectedCategory)?.name}
+                                            <button onClick={() => handleCategoryFilter('')} className="hover:text-amber-300">✕</button>
+                                        </span>
+                                    )}
+                                    {selectedDistrict && (
+                                        <span className="inline-flex items-center gap-1 text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full">
+                                            {selectedDistrict}
+                                            <button onClick={() => setSelectedDistrict('')} className="hover:text-amber-300">✕</button>
+                                        </span>
+                                    )}
+                                    {selectedCity && (
+                                        <span className="inline-flex items-center gap-1 text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full">
+                                            {selectedCity}
+                                            <button onClick={() => setSelectedCity('')} className="hover:text-amber-300">✕</button>
+                                        </span>
+                                    )}
+                                    {selectedFacilities.map(id => {
+                                        const facility = facilities.find(f => f.id === id);
+                                        return facility && (
+                                            <span key={id} className="inline-flex items-center gap-1 text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full">
+                                                {facility.name}
+                                                <button onClick={() => toggleFacility(id)} className="hover:text-amber-300">✕</button>
+                                            </span>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* RESULTS SECTION */}
                     <div className="mt-8">
-                        <div className="flex flex-wrap justify-between items-center mb-8 border-b border-white/10 pb-4">
+                        <div className="flex flex-wrap justify-between items-center mb-6 border-b border-white/10 pb-4">
                             <div>
                                 <h2 className="text-xl font-bold text-white tracking-wide drop-shadow-lg">
                                     {searchTerm ? `Results for "${searchTerm}"` : 'Recommended Locations'}
@@ -378,6 +535,20 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                                 </p>
                             </div>
                             <div className="flex items-center gap-3">
+                                {/* Sort By */}
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs text-white/40">Sort by:</span>
+                                    <select
+                                        value={sortBy}
+                                        onChange={(e) => setSortBy(e.target.value)}
+                                        className="bg-white/5 border border-white/10 text-white text-xs rounded-xl px-2 py-1 focus:outline-none focus:border-amber-500/50 transition-all cursor-pointer"
+                                    >
+                                        <option value="rating">Rating (High→Low)</option>
+                                        <option value="newest">Newest</option>
+                                        <option value="name">Name A-Z</option>
+                                    </select>
+                                </div>
+
                                 {/* VIEW TOGGLES */}
                                 <div className="flex rounded-lg bg-black/30 backdrop-blur-sm p-1 border border-white/10">
                                     <button
@@ -405,7 +576,7 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                         </div>
 
                         {gymList.length > 0 ? (
-                            <div className={`grid ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'} gap-8`}>
+                            <div className={`grid ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'} gap-6`}>
                                 {gymList.map((gym, index) => {
                                     const gymImage = getGymImage(gym.id);
                                     const hasOwnImages = gym.images && gym.images.length > 0;
@@ -423,6 +594,7 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                                         : null;
 
                                     const hours = `${Math.floor(Math.random() * 6 + 6)}:00 AM - ${Math.floor(Math.random() * 4 + 8)}:00 PM`;
+                                    const isNew = new Date(gym.created_at) > new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
 
                                     const badgeColors = [
                                         'bg-amber-500/20 text-amber-400 border-amber-500/30',
@@ -442,6 +614,7 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                                             } hover:scale-[1.02] transition-all duration-300 group`}
                                             style={{ animationDelay: `${index * 50}ms` }}
                                         >
+                                            {/* Image Section */}
                                             {viewMode === 'grid' ? (
                                                 <div className="relative h-52 overflow-hidden bg-slate-900">
                                                     <img
@@ -452,19 +625,25 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                                                     />
                                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
                                                     
-                                                    {gym.category && (
-                                                        <div className={`absolute top-3 left-3 px-3 py-1 rounded-lg backdrop-blur-md border text-[10px] font-bold uppercase tracking-wider ${badgeColor}`}>
-                                                            {gym.category.name}
+                                                    {/* New Badge */}
+                                                    {isNew && (
+                                                        <div className="absolute top-3 left-3 px-3 py-1 rounded-lg bg-emerald-500/90 backdrop-blur-md text-white text-[10px] font-bold uppercase">
+                                                            ✨ New
                                                         </div>
                                                     )}
                                                     
+                                                    {/* Rating Badge */}
                                                     <div className="absolute top-3 right-3 bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/10 flex items-center gap-1">
                                                         <span className="text-amber-400 text-xs">⭐</span>
                                                         <span className="text-xs font-bold text-white">
                                                             {gym.average_rating ? Number(gym.average_rating).toFixed(1) : 'N/A'}
                                                         </span>
+                                                        {gym.reviews_count !== undefined && (
+                                                            <span className="text-[10px] text-white/40">({gym.reviews_count})</span>
+                                                        )}
                                                     </div>
                                                     
+                                                    {/* Open Status */}
                                                     {gym.is_open && (
                                                         <div className="absolute bottom-3 left-3 bg-emerald-500/90 backdrop-blur-md px-3 py-1 rounded-lg text-[10px] font-bold text-white uppercase flex items-center gap-1">
                                                             <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
@@ -472,6 +651,7 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                                                         </div>
                                                     )}
                                                     
+                                                    {/* Image Counter */}
                                                     {hasOwnImages && (
                                                         <div className="absolute bottom-3 right-3 bg-black/80 backdrop-blur-md px-2 py-0.5 rounded-lg text-[10px] text-white/60">
                                                             📸 {gym.images.length}
@@ -493,16 +673,31 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                                                             Open
                                                         </div>
                                                     )}
+                                                    {isNew && (
+                                                        <div className="absolute top-3 left-3 px-2 py-0.5 rounded-lg bg-emerald-500/90 backdrop-blur-md text-white text-[8px] font-bold uppercase">
+                                                            ✨ New
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
 
+                                            {/* Content Section */}
                                             <div className={`p-6 flex-1 flex flex-col justify-between ${
                                                 viewMode === 'list' ? 'md:flex-row md:items-center' : ''
                                             }`}>
                                                 <div className={viewMode === 'list' ? 'md:flex-1' : ''}>
-                                                    <h3 className="text-xl font-bold text-white mb-1 tracking-tight hover:text-amber-400 transition-colors line-clamp-1">
-                                                        {gym.name}
-                                                    </h3>
+                                                    {/* Gym Name & Rating */}
+                                                    <div className="flex items-start justify-between">
+                                                        <h3 className="text-xl font-bold text-white mb-1 tracking-tight hover:text-amber-400 transition-colors line-clamp-1">
+                                                            {gym.name}
+                                                        </h3>
+                                                        {viewMode === 'grid' && (
+                                                            <button className="text-white/30 hover:text-amber-400 transition-colors ml-2 flex-shrink-0">
+                                                                ♡
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                    
                                                     <p className="text-xs text-white/60 mb-2 line-clamp-2 leading-relaxed">
                                                         {gym.address}
                                                     </p>
@@ -523,19 +718,20 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                                                         </div>
                                                     )}
 
+                                                    {/* Facilities Icons */}
                                                     {gym.facilities && gym.facilities.length > 0 && (
-                                                        <div className="flex flex-wrap gap-1.5 mb-6">
-                                                            {gym.facilities.slice(0, viewMode === 'list' ? 4 : 3).map((facility) => (
+                                                        <div className="flex flex-wrap gap-1.5 mb-3">
+                                                            {gym.facilities.slice(0, viewMode === 'list' ? 5 : 4).map((facility) => (
                                                                 <span
                                                                     key={facility.id}
-                                                                    className="text-[10px] bg-white/10 text-white/70 border border-white/10 px-2 py-0.5 rounded-md backdrop-blur-sm"
+                                                                    className="text-[10px] bg-white/10 text-white/70 border border-white/10 px-2 py-0.5 rounded-md backdrop-blur-sm flex items-center gap-1"
                                                                 >
-                                                                    {facility.name}
+                                                                    {facility.icon || '✓'} {facility.name}
                                                                 </span>
                                                             ))}
-                                                            {gym.facilities.length > 3 && viewMode === 'grid' && (
+                                                            {gym.facilities.length > 4 && viewMode === 'grid' && (
                                                                 <span className="text-[10px] text-white/40">
-                                                                    +{gym.facilities.length - 3} more
+                                                                    +{gym.facilities.length - 4} more
                                                                 </span>
                                                             )}
                                                         </div>
@@ -548,6 +744,7 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                                                     )}
                                                 </div>
 
+                                                {/* Action Buttons */}
                                                 <div className={`${viewMode === 'list' ? 'md:ml-6 md:min-w-[200px]' : ''}`}>
                                                     <div className="grid grid-cols-2 gap-3 pt-4 border-t border-white/10">
                                                         {waUrl ? (
@@ -584,12 +781,23 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                                 })}
                             </div>
                         ) : (
+                            /* Empty State with Clear Filters */
                             <div className="text-center py-20 glass-card rounded-3xl backdrop-blur-xl bg-white/5 border-white/10">
                                 <span className="text-6xl mb-4 block">🔍</span>
                                 <h3 className="text-2xl font-bold text-white mt-4">No Gyms Found</h3>
                                 <p className="text-white/60 text-sm mt-2 max-w-md mx-auto">
-                                    We couldn't find any gyms matching your search criteria.
+                                    {hasActiveFilters 
+                                        ? "We couldn't find any gyms matching your filters. Try adjusting your criteria."
+                                        : "We couldn't find any gyms matching your search criteria."}
                                 </p>
+                                {hasActiveFilters && (
+                                    <button
+                                        onClick={clearFilters}
+                                        className="mt-4 text-sm px-6 py-2.5 rounded-xl bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/30 transition-all"
+                                    >
+                                        Clear All Filters
+                                    </button>
+                                )}
                                 <div className="mt-6">
                                     <p className="text-xs text-white/40 mb-3">Try these suggestions:</p>
                                     <div className="flex flex-wrap justify-center gap-2">
@@ -616,7 +824,14 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                         <div className="flex justify-center mt-12">
                             <div className="flex gap-2">
                                 <button
-                                    onClick={() => router.get('/', { page: gyms.current_page - 1, search: searchTerm, category_id: selectedCategory })}
+                                    onClick={() => router.get('/', { 
+                                        page: gyms.current_page - 1, 
+                                        search: searchTerm, 
+                                        category_id: selectedCategory,
+                                        district: selectedDistrict,
+                                        city: selectedCity,
+                                        facilities: selectedFacilities.join(',')
+                                    })}
                                     disabled={gyms.current_page <= 1}
                                     className="px-4 py-2 rounded-xl bg-black/30 backdrop-blur-sm text-white/70 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/10 transition border border-white/10"
                                 >
@@ -626,7 +841,14 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                                     {gyms.current_page} / {gyms.last_page}
                                 </span>
                                 <button
-                                    onClick={() => router.get('/', { page: gyms.current_page + 1, search: searchTerm, category_id: selectedCategory })}
+                                    onClick={() => router.get('/', { 
+                                        page: gyms.current_page + 1,
+                                        search: searchTerm, 
+                                        category_id: selectedCategory,
+                                        district: selectedDistrict,
+                                        city: selectedCity,
+                                        facilities: selectedFacilities.join(',')
+                                    })}
                                     disabled={gyms.current_page >= gyms.last_page}
                                     className="px-4 py-2 rounded-xl bg-black/30 backdrop-blur-sm text-white/70 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/10 transition border border-white/10"
                                 >

@@ -6,6 +6,9 @@ use App\Http\Controllers\Admin\AdminGymOwnerApplicationController;
 use App\Http\Controllers\Admin\AdminReportController;
 use App\Http\Controllers\Admin\AdminReviewController;
 use App\Http\Controllers\Admin\AdminUserController;
+use App\Http\Controllers\Admin\LocationController;
+use App\Http\Controllers\Admin\TaxonomyController;
+use App\Http\Controllers\Admin\AdminSearchController;
 use App\Http\Controllers\GymController;
 use App\Http\Controllers\GymOwnerApplicationController;
 use App\Http\Controllers\Owner\CreateGymController;
@@ -57,6 +60,8 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
 
+    Route::get('search', [AdminSearchController::class, 'index'])->name('search.index');
+
     Route::resource('gyms', AdminGymController::class)->except(['create', 'store']);
     Route::post('gyms/{gym}/approve', [AdminGymController::class, 'approve'])->name('gyms.approve');
     Route::post('gyms/{gym}/reject', [AdminGymController::class, 'reject'])->name('gyms.reject');
@@ -83,6 +88,20 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->name('admin.')
     Route::get('reports/{report}', [AdminReportController::class, 'show'])->name('reports.show');
     Route::post('reports/{report}/resolve', [AdminReportController::class, 'resolve'])->name('reports.resolve');
     Route::post('reports/{report}/dismiss', [AdminReportController::class, 'dismiss'])->name('reports.dismiss');
+
+    Route::get('locations', [LocationController::class, 'index'])->name('locations.index');
+    Route::post('locations/states', [LocationController::class, 'storeState'])->name('locations.states.store');
+    Route::post('locations/districts', [LocationController::class, 'storeDistrict'])->name('locations.districts.store');
+    Route::post('locations/cities', [LocationController::class, 'storeCity'])->name('locations.cities.store');
+    Route::delete('locations/states/{state}', [LocationController::class, 'destroyState'])->name('locations.states.destroy');
+    Route::delete('locations/districts/{district}', [LocationController::class, 'destroyDistrict'])->name('locations.districts.destroy');
+    Route::delete('locations/cities/{city}', [LocationController::class, 'destroyCity'])->name('locations.cities.destroy');
+
+    Route::get('taxonomy', [TaxonomyController::class, 'index'])->name('taxonomy.index');
+    Route::post('taxonomy/facilities', [TaxonomyController::class, 'storeFacility'])->name('taxonomy.facilities.store');
+    Route::post('taxonomy/categories', [TaxonomyController::class, 'storeCategory'])->name('taxonomy.categories.store');
+    Route::delete('taxonomy/facilities/{facility}', [TaxonomyController::class, 'destroyFacility'])->name('taxonomy.facilities.destroy');
+    Route::delete('taxonomy/categories/{category}', [TaxonomyController::class, 'destroyCategory'])->name('taxonomy.categories.destroy');
 });
 
 /*

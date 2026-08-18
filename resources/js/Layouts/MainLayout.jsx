@@ -84,20 +84,23 @@ export default function MainLayout({ children }) {
 
     const currentBg = backgrounds[backgroundIndex] || backgrounds[0];
 
-    // Safe route helper to prevent errors
+    // Safe route helper to prevent errors - REMOVED profile.settings
     const getRoute = (name, params = {}) => {
         try {
             return route(name, params);
         } catch (e) {
             console.warn(`Route "${name}" not found, using fallback`);
-            if (name === 'logout') return '/logout';
-            if (name === 'login') return '/login';
-            if (name === 'register') return '/register';
-            if (name === 'owner-applications.create') return '/apply-owner';
-            if (name === 'owner-applications.status') return '/apply-owner/status';
-            if (name === 'profile.edit') return '/profile';
-            if (name === 'profile.settings') return '/settings';
-            return '#';
+            const fallbackRoutes = {
+                'logout': '/logout',
+                'login': '/login',
+                'register': '/register',
+                'owner-applications.create': '/apply-owner',
+                'owner-applications.status': '/apply-owner/status',
+                'profile.edit': '/profile',
+                'dashboard': '/dashboard',
+                'home': '/',
+            };
+            return fallbackRoutes[name] || '#';
         }
     };
 
@@ -107,6 +110,22 @@ export default function MainLayout({ children }) {
     const userName = user?.name || 'Guest';
     const userEmail = user?.email || '';
     const userAvatar = user?.avatar || null;
+    
+    // Get user role name safely - FIXED: handle both string and object
+    const getUserRole = () => {
+        if (!user?.role) return 'Member';
+        // If role is an object with name property
+        if (typeof user.role === 'object' && user.role.name) {
+            return user.role.name;
+        }
+        // If role is a string
+        if (typeof user.role === 'string') {
+            return user.role;
+        }
+        return 'Member';
+    };
+
+    const userRole = getUserRole();
 
     // Get user initials for avatar
     const getUserInitials = () => {
@@ -270,13 +289,13 @@ export default function MainLayout({ children }) {
                                             )}
                                         </div>
                                         
-                                        {/* User Info */}
+                                        {/* User Info - FIXED: using userRole variable */}
                                         <div className="flex flex-col items-start">
                                             <span className="text-sm font-semibold text-white group-hover:text-amber-400 transition-colors">
                                                 {userName}
                                             </span>
                                             <span className="text-[10px] text-white/40">
-                                                {user?.role || 'Member'}
+                                                {userRole}
                                             </span>
                                         </div>
                                         
@@ -317,7 +336,7 @@ export default function MainLayout({ children }) {
                                                     <span>My Profile</span>
                                                 </Link>
                                                 <Link
-                                                    href={getRoute('profile.settings')}
+                                                    href="/settings"
                                                     className="flex items-center gap-3 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
                                                     onClick={() => setIsProfileDropdownOpen(false)}
                                                 >
@@ -420,7 +439,7 @@ export default function MainLayout({ children }) {
                                             <span>👤</span> My Profile
                                         </Link>
                                         <Link
-                                            href={getRoute('profile.settings')}
+                                            href="/settings"
                                             className="flex items-center gap-3 px-4 py-3 text-sm text-white/80 hover:text-white hover:bg-white/5 rounded-xl transition-all"
                                             onClick={() => setIsMobileMenuOpen(false)}
                                         >

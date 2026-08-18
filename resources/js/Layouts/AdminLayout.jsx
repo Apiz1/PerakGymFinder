@@ -66,7 +66,7 @@ export default function AdminLayout({ children, title = 'Admin Dashboard' }) {
     const handleSearch = (e) => {
         e.preventDefault();
         if (searchQuery.trim().length > 2) {
-            router.get('/admin/search', { q: searchQuery });
+            router.get(route('admin.search.index'), { q: searchQuery });
         }
     };
 
