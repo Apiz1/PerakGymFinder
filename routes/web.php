@@ -19,6 +19,7 @@ use App\Http\Controllers\Owner\OwnerGymOperatingHourController;
 use App\Http\Controllers\Owner\OwnerMembershipController;
 use App\Http\Controllers\Owner\OwnerReviewController;
 use App\Http\Controllers\Owner\PhotoGymController;
+use App\Http\Controllers\Owner\OwnerReportController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -49,6 +50,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/apply-owner', [GymOwnerApplicationController::class, 'create'])->name('owner-applications.create');
     Route::post('/apply-owner', [GymOwnerApplicationController::class, 'store'])->name('owner-applications.store');
     Route::get('/apply-owner/status', [GymOwnerApplicationController::class, 'status'])->name('owner-applications.status');
+
+    Route::post('/gyms/{gym}/reviews', [ReviewController::class, 'store'])->name('reviews.store');
+    Route::post('/gyms/{gym}/report', [GymReportController::class, 'store'])->name('gyms.report');
 });
 
 /*
@@ -132,6 +136,8 @@ Route::middleware(['auth', 'role:gym_owner,super_admin'])->prefix('owner')->name
     Route::get('/gym/reviews', [OwnerReviewController::class, 'index'])->name('gym.reviews.index');
     Route::post('/gym/reviews/{review}/reply', [OwnerReviewController::class, 'storeReply'])->name('gym.reviews.reply.store');
     Route::put('/gym/reviews/{review}/reply', [OwnerReviewController::class, 'updateReply'])->name('gym.reviews.reply.update');
+    Route::get('/gym/reports', [OwnerReportController::class, 'index'])->name('gym.reports.index');
+    Route::post('/gym/reports/{report}/resolve', [OwnerReportController::class, 'markResolved'])->name('gym.reports.resolve');
 });
 
 require __DIR__.'/auth.php';

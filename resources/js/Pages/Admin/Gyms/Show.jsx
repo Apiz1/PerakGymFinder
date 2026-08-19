@@ -65,7 +65,7 @@ export default function Show({ gym }) {
                     <div className="flex items-start gap-4">
                        {gym.images && gym.images.length > 0 ? (
                             <img
-                                src={gym.images[0].url || gym.images[0].image_path}
+                                src={(gym.images.find((img) => img.is_primary) || gym.images[0]).url}
                                 alt={gym.name}
                                 className="w-20 h-20 rounded-xl object-cover border border-slate-700/80 shadow-md flex-shrink-0"
                                 onError={(e) => {

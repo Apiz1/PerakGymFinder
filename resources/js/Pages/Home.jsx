@@ -1,17 +1,26 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { router } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import { debounce } from 'lodash';
 import MainLayout from '@/Layouts/MainLayout';
 
-export default function Home({ gyms = {}, filters = {}, categories = [], facilities = [] }) {
+export default function Home({ 
+    gyms = {}, 
+    filters = {}, 
+    states = [], 
+    districts = [], 
+    cities = [], 
+    categories = [], 
+    facilities = [] 
+}) {
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
-    const [selectedCategory, setSelectedCategory] = useState(filters.category_id || '');
-    const [selectedDistrict, setSelectedDistrict] = useState('');
-    const [selectedCity, setSelectedCity] = useState('');
-    const [selectedFacilities, setSelectedFacilities] = useState([]);
+    const [selectedCategory, setSelectedCategory] = useState(filters.category_ids?.[0] || '');
+    const [selectedState, setSelectedState] = useState(filters.state_id || '');
+    const [selectedDistrict, setSelectedDistrict] = useState(filters.district_id || '');
+    const [selectedCity, setSelectedCity] = useState(filters.city_id || '');
+    const [selectedFacilities, setSelectedFacilities] = useState(filters.facility_ids || []);
     const [isLoading, setIsLoading] = useState(false);
     const [viewMode, setViewMode] = useState('grid');
-    const [sortBy, setSortBy] = useState('rating');
+    const [sortBy, setSortBy] = useState(filters.sort || 'rating');
     const [showMoreFilters, setShowMoreFilters] = useState(false);
     const [backgroundIndex, setBackgroundIndex] = useState(0);
     const [gymImages, setGymImages] = useState({});
@@ -71,6 +80,21 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
         'https://images.unsplash.com/photo-1552074284-5e88ef1aef18?w=800&h=600&fit=crop',
     ], []);
 
+    // Helper function to safely format rating
+    const formatRating = (rating) => {
+        if (rating === null || rating === undefined) return 'N/A';
+        if (typeof rating === 'number') return rating.toFixed(1);
+        const parsed = parseFloat(rating);
+        return isNaN(parsed) ? 'N/A' : parsed.toFixed(1);
+    };
+
+    // Helper function to safely get numeric rating
+    const getNumericRating = (rating) => {
+        if (typeof rating === 'number') return rating;
+        const parsed = parseFloat(rating);
+        return isNaN(parsed) ? 0 : parsed;
+    };
+
     // Get random image for a gym
     const getGymImage = (gymId) => {
         if (gymImages[gymId]) return gymImages[gymId];
@@ -88,17 +112,31 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
 
     const currentBg = backgrounds[backgroundIndex] || backgrounds[0];
 
+    // Filter districts based on selected state
+    const filteredDistricts = useMemo(() => {
+        if (!selectedState) return districts;
+        return districts.filter(d => d.state_id === parseInt(selectedState));
+    }, [selectedState, districts]);
+
+    // Filter cities based on selected district
+    const filteredCities = useMemo(() => {
+        if (!selectedDistrict) return cities;
+        return cities.filter(c => c.district_id === parseInt(selectedDistrict));
+    }, [selectedDistrict, cities]);
+
     // Debounced search for better UX
     const debouncedSearch = useCallback(
-        debounce((term, category, district, city, facilities) => {
+        debounce((term, category, state, district, city, facilities, sort) => {
             router.get(
                 '/',
                 { 
                     search: term, 
-                    category_id: category,
-                    district: district,
-                    city: city,
-                    facilities: facilities.join(',')
+                    category_ids: category ? [category] : [],
+                    state_id: state,
+                    district_id: district,
+                    city_id: city,
+                    facility_ids: facilities,
+                    sort: sort
                 },
                 { preserveState: true, replace: true }
             );
@@ -114,10 +152,12 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
             '/',
             { 
                 search: searchTerm, 
-                category_id: selectedCategory,
-                district: selectedDistrict,
-                city: selectedCity,
-                facilities: selectedFacilities.join(',')
+                category_ids: selectedCategory ? [selectedCategory] : [],
+                state_id: selectedState,
+                district_id: selectedDistrict,
+                city_id: selectedCity,
+                facility_ids: selectedFacilities,
+                sort: sortBy
             },
             { 
                 preserveState: true, 
@@ -135,16 +175,39 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
             '/',
             { 
                 search: searchTerm, 
-                category_id: categoryId,
-                district: selectedDistrict,
-                city: selectedCity,
-                facilities: selectedFacilities.join(',')
+                category_ids: categoryId ? [categoryId] : [],
+                state_id: selectedState,
+                district_id: selectedDistrict,
+                city_id: selectedCity,
+                facility_ids: selectedFacilities,
+                sort: sortBy
             },
             { 
                 preserveState: true,
                 onFinish: () => setIsLoading(false)
             }
         );
+    };
+
+    // Handle state change - reset district and city
+    const handleStateChange = (stateId) => {
+        setSelectedState(stateId);
+        setSelectedDistrict('');
+        setSelectedCity('');
+        handleSearch(new Event('submit'));
+    };
+
+    // Handle district change - reset city
+    const handleDistrictChange = (districtId) => {
+        setSelectedDistrict(districtId);
+        setSelectedCity('');
+        handleSearch(new Event('submit'));
+    };
+
+    // Handle city change
+    const handleCityChange = (cityId) => {
+        setSelectedCity(cityId);
+        handleSearch(new Event('submit'));
     };
 
     // Toggle facility selection
@@ -156,23 +219,64 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
         );
     };
 
+    // Handle sort change
+    const handleSortChange = (sort) => {
+        setSortBy(sort);
+        setIsLoading(true);
+        router.get(
+            '/',
+            { 
+                search: searchTerm, 
+                category_ids: selectedCategory ? [selectedCategory] : [],
+                state_id: selectedState,
+                district_id: selectedDistrict,
+                city_id: selectedCity,
+                facility_ids: selectedFacilities,
+                sort: sort
+            },
+            { 
+                preserveState: true,
+                onFinish: () => setIsLoading(false)
+            }
+        );
+    };
+
     // Clear all filters
     const clearFilters = () => {
         setSelectedCategory('');
+        setSelectedState('');
         setSelectedDistrict('');
         setSelectedCity('');
         setSelectedFacilities([]);
         setSearchTerm('');
-        handleSearch(new Event('submit'));
+        setSortBy('rating');
+        router.get(
+            '/',
+            { sort: 'rating' },
+            { preserveState: true, replace: true }
+        );
     };
 
     // Extract Paginated Gym Items
     const gymList = gyms.data || [];
 
-    // Quick stats calculation
+    // Quick stats calculation - FIXED
     const totalGyms = gyms.total || gymList.length;
-    const avgRating = gymList.reduce((acc, gym) => acc + (gym.average_rating || 0), 0) / (gymList.length || 1);
-    const topRatedGym = gymList.length > 0 ? gymList.reduce((a, b) => (a.average_rating || 0) > (b.average_rating || 0) ? a : b) : null;
+
+    // Safely calculate average rating
+    const avgRating = gymList.length > 0 
+        ? gymList.reduce((acc, gym) => {
+            const rating = getNumericRating(gym.average_rating);
+            return acc + rating;
+        }, 0) / gymList.length
+        : 0;
+
+    // Safely find top rated gym
+    const topRatedGym = gymList.length > 0 ? gymList.reduce((a, b) => {
+        const ratingA = getNumericRating(a.average_rating);
+        const ratingB = getNumericRating(b.average_rating);
+        return ratingA > ratingB ? a : b;
+    }) : null;
 
     // Function to refresh background
     const refreshBackground = () => {
@@ -181,7 +285,16 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
     };
 
     // Check if any filters are active
-    const hasActiveFilters = selectedCategory || selectedDistrict || selectedCity || selectedFacilities.length > 0;
+    const hasActiveFilters = selectedCategory || selectedState || selectedDistrict || selectedCity || selectedFacilities.length > 0 || searchTerm;
+
+    // Helper to get gym show URL
+    const getGymShowUrl = (gym) => {
+        // Use the slug if available, otherwise use id
+        if (gym.slug) {
+            return `/gyms/${gym.slug}`;
+        }
+        return `/gyms/${gym.id}`;
+    };
 
     return (
         <MainLayout>
@@ -298,20 +411,24 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                             with complete reviews, map directions, and WhatsApp contacts.
                         </p>
 
-                        {/* STATS BADGES */}
+                        {/* STATS BADGES - FIXED */}
                         <div className="flex flex-wrap justify-center gap-4 mb-8">
                             <div className="glass-card px-6 py-3 rounded-xl backdrop-blur-xl bg-white/5 border-white/10">
                                 <span className="text-2xl font-bold text-amber-400">{totalGyms}</span>
                                 <span className="text-xs text-white/70 ml-2">Gyms</span>
                             </div>
                             <div className="glass-card px-6 py-3 rounded-xl backdrop-blur-xl bg-white/5 border-white/10">
-                                <span className="text-2xl font-bold text-amber-400">{avgRating.toFixed(1)}</span>
+                                <span className="text-2xl font-bold text-amber-400">
+                                    {formatRating(avgRating)}
+                                </span>
                                 <span className="text-xs text-white/70 ml-2">⭐ Avg Rating</span>
                             </div>
                             {topRatedGym && (
                                 <div className="glass-card px-6 py-3 rounded-xl backdrop-blur-xl bg-white/5 border-white/10">
                                     <span className="text-sm font-semibold text-white">🏆 {topRatedGym.name}</span>
-                                    <span className="text-xs text-amber-400 ml-2">#{topRatedGym.average_rating?.toFixed(1)}</span>
+                                    <span className="text-xs text-amber-400 ml-2">
+                                        #{formatRating(topRatedGym.average_rating)}
+                                    </span>
                                 </div>
                             )}
                         </div>
@@ -330,18 +447,18 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                                     onChange={(e) => {
                                         setSearchTerm(e.target.value);
                                         if (e.target.value.length > 2) {
-                                            debouncedSearch(e.target.value, selectedCategory, selectedDistrict, selectedCity, selectedFacilities);
+                                            debouncedSearch(e.target.value, selectedCategory, selectedState, selectedDistrict, selectedCity, selectedFacilities, sortBy);
                                         }
                                     }}
                                     placeholder="Search by gym name, town, or district..."
-                                    className="search-input w-full text-white placeholder-white/50 pl-12 pr-36 py-4 rounded-2xl text-sm sm:text-base focus:outline-none backdrop-blur-xl bg-black/30 border-white/20"
+                                    className="search-input w-full text-white placeholder-white/50 pl-12 pr-36 py-4 rounded-2xl text-sm sm:text-base focus:outline-none backdrop-blur-xl bg-black/30 border-white/20 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 transition-all"
                                 />
                                 {searchTerm && (
                                     <button
                                         type="button"
                                         onClick={() => {
                                             setSearchTerm('');
-                                            debouncedSearch('', selectedCategory, selectedDistrict, selectedCity, selectedFacilities);
+                                            debouncedSearch('', selectedCategory, selectedState, selectedDistrict, selectedCity, selectedFacilities, sortBy);
                                         }}
                                         className="absolute right-28 text-white/50 hover:text-white transition-colors"
                                     >
@@ -353,7 +470,7 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                                 <button
                                     type="submit"
                                     disabled={isLoading}
-                                    className="search-btn absolute right-2 text-white font-bold px-7 py-3 rounded-xl text-sm disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50 transition-all duration-300"
+                                    className="search-btn absolute right-2 text-white font-bold px-7 py-3 rounded-xl text-sm disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50 transition-all duration-300 hover:scale-105"
                                 >
                                     {isLoading ? 'Searching...' : 'Search'}
                                 </button>
@@ -389,62 +506,99 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                                 
                                 {/* Category Filter */}
                                 {categories.length > 0 && (
-                                <div className="relative">
-                                    <select
-                                        value={selectedCategory}
-                                        onChange={(e) => handleCategoryFilter(e.target.value)}
-                                        className="bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 text-white text-xs rounded-xl px-4 py-2 pr-8 focus:outline-none focus:border-amber-500/70 focus:ring-2 focus:ring-amber-500/20 transition-all cursor-pointer appearance-none min-w-[140px]"
-                                        style={{
-                                            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
-                                            backgroundRepeat: 'no-repeat',
-                                            backgroundPosition: 'right 10px center',
-                                            backgroundSize: '10px'
-                                        }}
-                                    >
-                                        <option value="" className="bg-slate-800 text-white">All Categories</option>
-                                        {categories.map((cat) => (
-                                            <option key={cat.id} value={cat.id} className="bg-slate-800 text-white hover:bg-slate-700">
-                                                {cat.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            )}
+                                    <div className="relative">
+                                        <select
+                                            value={selectedCategory}
+                                            onChange={(e) => handleCategoryFilter(e.target.value)}
+                                            className="bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 text-white text-xs rounded-xl px-4 py-2 pr-8 focus:outline-none focus:border-amber-500/70 focus:ring-2 focus:ring-amber-500/20 transition-all cursor-pointer appearance-none min-w-[140px]"
+                                            style={{
+                                                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+                                                backgroundRepeat: 'no-repeat',
+                                                backgroundPosition: 'right 10px center',
+                                                backgroundSize: '10px'
+                                            }}
+                                        >
+                                            <option value="" className="bg-slate-800 text-white">All Categories</option>
+                                            {categories.map((cat) => (
+                                                <option key={cat.id} value={cat.id} className="bg-slate-800 text-white hover:bg-slate-700">
+                                                    {cat.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+
+                                {/* State Filter */}
+                                {states.length > 0 && (
+                                    <div className="relative">
+                                        <select
+                                            value={selectedState}
+                                            onChange={(e) => handleStateChange(e.target.value)}
+                                            className="bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 text-white text-xs rounded-xl px-4 py-2 pr-8 focus:outline-none focus:border-amber-500/70 focus:ring-2 focus:ring-amber-500/20 transition-all cursor-pointer appearance-none min-w-[140px]"
+                                            style={{
+                                                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+                                                backgroundRepeat: 'no-repeat',
+                                                backgroundPosition: 'right 10px center',
+                                                backgroundSize: '10px'
+                                            }}
+                                        >
+                                            <option value="">All States</option>
+                                            {states.map((state) => (
+                                                <option key={state.id} value={state.id} className="bg-slate-800 text-white hover:bg-slate-700">
+                                                    {state.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+
                                 {/* District Filter */}
-                                <div className="relative">
-                                    <select
-                                        value={selectedDistrict}
-                                        onChange={(e) => {
-                                            setSelectedDistrict(e.target.value);
-                                            handleSearch(new Event('submit'));
-                                        }}
-                                        className="bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 text-slate-200 text-xs rounded-xl px-4 py-2 pr-8 focus:outline-none focus:border-amber-500/70 focus:ring-2 focus:ring-amber-500/20 transition-all cursor-pointer appearance-none min-w-[140px] font-medium"
-                                    >
-                                        <option value="">All Districts</option>
-                                        {/* Districts would come from your data */}
-                                        <option value="Kinta">Kinta</option>
-                                        <option value="Larut Matang">Larut Matang</option>
-                                        <option value="Manjung">Manjung</option>
-                                    </select>
-                                </div>
+                                {filteredDistricts.length > 0 && (
+                                    <div className="relative">
+                                        <select
+                                            value={selectedDistrict}
+                                            onChange={(e) => handleDistrictChange(e.target.value)}
+                                            className="bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 text-white text-xs rounded-xl px-4 py-2 pr-8 focus:outline-none focus:border-amber-500/70 focus:ring-2 focus:ring-amber-500/20 transition-all cursor-pointer appearance-none min-w-[140px]"
+                                            style={{
+                                                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+                                                backgroundRepeat: 'no-repeat',
+                                                backgroundPosition: 'right 10px center',
+                                                backgroundSize: '10px'
+                                            }}
+                                        >
+                                            <option value="">All Districts</option>
+                                            {filteredDistricts.map((district) => (
+                                                <option key={district.id} value={district.id} className="bg-slate-800 text-white hover:bg-slate-700">
+                                                    {district.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
 
                                 {/* City Filter */}
-                                <div className="relative">
-                                    <select
-                                        value={selectedCity}
-                                        onChange={(e) => {
-                                            setSelectedCity(e.target.value);
-                                            handleSearch(new Event('submit'));
-                                        }}
-                                       className="bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 text-slate-200 text-xs rounded-xl px-4 py-2 pr-8 focus:outline-none focus:border-amber-500/70 focus:ring-2 focus:ring-amber-500/20 transition-all cursor-pointer appearance-none min-w-[140px] font-medium"
-                                    >
-                                        <option value="">All Cities</option>
-                                        {/* Cities would come from your data */}
-                                        <option value="Ipoh">Ipoh</option>
-                                        <option value="Taiping">Taiping</option>
-                                        <option value="Sitiawan">Sitiawan</option>
-                                    </select>
-                                </div>
+                                {filteredCities.length > 0 && (
+                                    <div className="relative">
+                                        <select
+                                            value={selectedCity}
+                                            onChange={(e) => handleCityChange(e.target.value)}
+                                            className="bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 text-white text-xs rounded-xl px-4 py-2 pr-8 focus:outline-none focus:border-amber-500/70 focus:ring-2 focus:ring-amber-500/20 transition-all cursor-pointer appearance-none min-w-[140px]"
+                                            style={{
+                                                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+                                                backgroundRepeat: 'no-repeat',
+                                                backgroundPosition: 'right 10px center',
+                                                backgroundSize: '10px'
+                                            }}
+                                        >
+                                            <option value="">All Cities</option>
+                                            {filteredCities.map((city) => (
+                                                <option key={city.id} value={city.id} className="bg-slate-800 text-white hover:bg-slate-700">
+                                                    {city.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
 
                                 {/* More Filters Toggle */}
                                 <button
@@ -474,7 +628,7 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                                             <button
                                                 key={facility.id}
                                                 onClick={() => toggleFacility(facility.id)}
-                                                className={`text-xs px-3 py-1 rounded-full transition-all ${
+                                                className={`text-xs px-3 py-1 rounded-full transition-all ${ 
                                                     selectedFacilities.includes(facility.id)
                                                         ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                                                         : 'bg-white/5 text-white/70 border border-white/10 hover:bg-white/10'
@@ -497,16 +651,22 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                                             <button onClick={() => handleCategoryFilter('')} className="hover:text-amber-300">✕</button>
                                         </span>
                                     )}
+                                    {selectedState && (
+                                        <span className="inline-flex items-center gap-1 text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full">
+                                            {states.find(s => s.id == selectedState)?.name}
+                                            <button onClick={() => handleStateChange('')} className="hover:text-amber-300">✕</button>
+                                        </span>
+                                    )}
                                     {selectedDistrict && (
                                         <span className="inline-flex items-center gap-1 text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full">
-                                            {selectedDistrict}
-                                            <button onClick={() => setSelectedDistrict('')} className="hover:text-amber-300">✕</button>
+                                            {districts.find(d => d.id == selectedDistrict)?.name}
+                                            <button onClick={() => handleDistrictChange('')} className="hover:text-amber-300">✕</button>
                                         </span>
                                     )}
                                     {selectedCity && (
                                         <span className="inline-flex items-center gap-1 text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full">
-                                            {selectedCity}
-                                            <button onClick={() => setSelectedCity('')} className="hover:text-amber-300">✕</button>
+                                            {cities.find(c => c.id == selectedCity)?.name}
+                                            <button onClick={() => handleCityChange('')} className="hover:text-amber-300">✕</button>
                                         </span>
                                     )}
                                     {selectedFacilities.map(id => {
@@ -540,7 +700,7 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                                     <span className="text-xs text-white/40">Sort by:</span>
                                     <select
                                         value={sortBy}
-                                        onChange={(e) => setSortBy(e.target.value)}
+                                        onChange={(e) => handleSortChange(e.target.value)}
                                         className="bg-white/5 border border-white/10 text-white text-xs rounded-xl px-2 py-1 focus:outline-none focus:border-amber-500/50 transition-all cursor-pointer"
                                     >
                                         <option value="rating">Rating (High→Low)</option>
@@ -553,7 +713,7 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                                 <div className="flex rounded-lg bg-black/30 backdrop-blur-sm p-1 border border-white/10">
                                     <button
                                         onClick={() => setViewMode('grid')}
-                                        className={`p-2 rounded transition-colors ${
+                                        className={`p-2 rounded transition-colors ${ 
                                             viewMode === 'grid' ? 'bg-amber-500/20 text-amber-400' : 'text-white/50 hover:text-white'
                                         }`}
                                     >
@@ -563,7 +723,7 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                                     </button>
                                     <button
                                         onClick={() => setViewMode('list')}
-                                        className={`p-2 rounded transition-colors ${
+                                        className={`p-2 rounded transition-colors ${ 
                                             viewMode === 'list' ? 'bg-amber-500/20 text-amber-400' : 'text-white/50 hover:text-white'
                                         }`}
                                     >
@@ -581,7 +741,7 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                                     const gymImage = getGymImage(gym.id);
                                     const hasOwnImages = gym.images && gym.images.length > 0;
                                     const primaryImg = hasOwnImages 
-                                        ? (gym.images.find((img) => img.is_primary)?.image_path || gym.images[0]?.image_path)
+                                        ? (gym.images.find((img) => img.is_primary)?.url || gym.images[0]?.url)
                                         : gymImage;
 
                                     const mapUrl = gym.google_maps_url || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
@@ -593,190 +753,174 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                                         ? `https://wa.me/${waNumber}?text=${encodeURIComponent(`Hi ${gym.name}, I found your gym on GymFinder Perak!`)}`
                                         : null;
 
-                                    const hours = `${Math.floor(Math.random() * 6 + 6)}:00 AM - ${Math.floor(Math.random() * 4 + 8)}:00 PM`;
                                     const isNew = new Date(gym.created_at) > new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
-
-                                    const badgeColors = [
-                                        'bg-amber-500/20 text-amber-400 border-amber-500/30',
-                                        'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-                                        'bg-blue-500/20 text-blue-400 border-blue-500/30',
-                                        'bg-purple-500/20 text-purple-400 border-purple-500/30',
-                                        'bg-rose-500/20 text-rose-400 border-rose-500/30',
-                                        'bg-cyan-500/20 text-cyan-400 border-cyan-500/30'
-                                    ];
-                                    const badgeColor = badgeColors[index % badgeColors.length];
+                                    const gymShowUrl = getGymShowUrl(gym);
 
                                     return (
-                                        <div 
-                                            key={gym.id} 
-                                            className={`glass-card rounded-2xl overflow-hidden flex flex-col justify-between backdrop-blur-xl bg-white/5 border-white/10 ${
-                                                viewMode === 'list' ? 'md:flex-row md:h-48' : ''
-                                            } hover:scale-[1.02] transition-all duration-300 group`}
-                                            style={{ animationDelay: `${index * 50}ms` }}
+                                        <Link
+                                            key={gym.id}
+                                            href={gymShowUrl}
+                                            className="block group"
                                         >
-                                            {/* Image Section */}
-                                            {viewMode === 'grid' ? (
-                                                <div className="relative h-52 overflow-hidden bg-slate-900">
-                                                    <img
-                                                        src={primaryImg}
-                                                        alt={gym.name}
-                                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                                                        loading="lazy"
-                                                    />
-                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                                                    
-                                                    {/* New Badge */}
-                                                    {isNew && (
-                                                        <div className="absolute top-3 left-3 px-3 py-1 rounded-lg bg-emerald-500/90 backdrop-blur-md text-white text-[10px] font-bold uppercase">
-                                                            ✨ New
+                                            <div 
+                                                className={`glass-card rounded-2xl overflow-hidden flex flex-col justify-between backdrop-blur-xl bg-white/5 border-white/10 ${
+                                                    viewMode === 'list' ? 'md:flex-row md:h-48' : ''
+                                                } hover:scale-[1.02] transition-all duration-300 cursor-pointer`}
+                                                style={{ animationDelay: `${index * 50}ms` }}
+                                            >
+                                                {/* Image Section */}
+                                                {viewMode === 'grid' ? (
+                                                    <div className="relative h-52 overflow-hidden bg-slate-900">
+                                                        <img
+                                                            src={primaryImg}
+                                                            alt={gym.name}
+                                                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                                                            loading="lazy"
+                                                        />
+                                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                                                        
+                                                        {/* New Badge */}
+                                                        {isNew && (
+                                                            <div className="absolute top-3 left-3 px-3 py-1 rounded-lg bg-emerald-500/90 backdrop-blur-md text-white text-[10px] font-bold uppercase">
+                                                                ✨ New
+                                                            </div>
+                                                        )}
+                                                        
+                                                        {/* Rating Badge */}
+                                                        <div className="absolute top-3 right-3 bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/10 flex items-center gap-1">
+                                                            <span className="text-amber-400 text-xs">⭐</span>
+                                                            <span className="text-xs font-bold text-white">
+                                                                {formatRating(gym.average_rating)}
+                                                            </span>
                                                         </div>
-                                                    )}
-                                                    
-                                                    {/* Rating Badge */}
-                                                    <div className="absolute top-3 right-3 bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/10 flex items-center gap-1">
-                                                        <span className="text-amber-400 text-xs">⭐</span>
-                                                        <span className="text-xs font-bold text-white">
-                                                            {gym.average_rating ? Number(gym.average_rating).toFixed(1) : 'N/A'}
-                                                        </span>
-                                                        {gym.reviews_count !== undefined && (
-                                                            <span className="text-[10px] text-white/40">({gym.reviews_count})</span>
+                                                        
+                                                        {/* Open Status */}
+                                                        {gym.is_open && (
+                                                            <div className="absolute bottom-3 left-3 bg-emerald-500/90 backdrop-blur-md px-3 py-1 rounded-lg text-[10px] font-bold text-white uppercase flex items-center gap-1">
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                                                                Open Now
+                                                            </div>
                                                         )}
                                                     </div>
-                                                    
-                                                    {/* Open Status */}
-                                                    {gym.is_open && (
-                                                        <div className="absolute bottom-3 left-3 bg-emerald-500/90 backdrop-blur-md px-3 py-1 rounded-lg text-[10px] font-bold text-white uppercase flex items-center gap-1">
-                                                            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
-                                                            Open Now
-                                                        </div>
-                                                    )}
-                                                    
-                                                    {/* Image Counter */}
-                                                    {hasOwnImages && (
-                                                        <div className="absolute bottom-3 right-3 bg-black/80 backdrop-blur-md px-2 py-0.5 rounded-lg text-[10px] text-white/60">
-                                                            📸 {gym.images.length}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <div className="relative h-48 md:h-full md:w-48 flex-shrink-0 overflow-hidden bg-slate-900">
-                                                    <img
-                                                        src={primaryImg}
-                                                        alt={gym.name}
-                                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                                                        loading="lazy"
-                                                    />
-                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent md:bg-gradient-to-r"></div>
-                                                    {gym.is_open && (
-                                                        <div className="absolute bottom-3 left-3 bg-emerald-500/90 backdrop-blur-md px-2 py-0.5 rounded-lg text-[9px] font-bold text-white uppercase flex items-center gap-1">
-                                                            <span className="w-1 h-1 rounded-full bg-white animate-pulse"></span>
-                                                            Open
-                                                        </div>
-                                                    )}
-                                                    {isNew && (
-                                                        <div className="absolute top-3 left-3 px-2 py-0.5 rounded-lg bg-emerald-500/90 backdrop-blur-md text-white text-[8px] font-bold uppercase">
-                                                            ✨ New
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-
-                                            {/* Content Section */}
-                                            <div className={`p-6 flex-1 flex flex-col justify-between ${
-                                                viewMode === 'list' ? 'md:flex-row md:items-center' : ''
-                                            }`}>
-                                                <div className={viewMode === 'list' ? 'md:flex-1' : ''}>
-                                                    {/* Gym Name & Rating */}
-                                                    <div className="flex items-start justify-between">
-                                                        <h3 className="text-xl font-bold text-white mb-1 tracking-tight hover:text-amber-400 transition-colors line-clamp-1">
-                                                            {gym.name}
-                                                        </h3>
-                                                        {viewMode === 'grid' && (
-                                                            <button className="text-white/30 hover:text-amber-400 transition-colors ml-2 flex-shrink-0">
-                                                                ♡
-                                                            </button>
+                                                ) : (
+                                                    <div className="relative h-48 md:h-full md:w-48 flex-shrink-0 overflow-hidden bg-slate-900">
+                                                        <img
+                                                            src={primaryImg}
+                                                            alt={gym.name}
+                                                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                                                            loading="lazy"
+                                                        />
+                                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent md:bg-gradient-to-r"></div>
+                                                        {gym.is_open && (
+                                                            <div className="absolute bottom-3 left-3 bg-emerald-500/90 backdrop-blur-md px-2 py-0.5 rounded-lg text-[9px] font-bold text-white uppercase flex items-center gap-1">
+                                                                <span className="w-1 h-1 rounded-full bg-white animate-pulse"></span>
+                                                                Open
+                                                            </div>
+                                                        )}
+                                                        {isNew && (
+                                                            <div className="absolute top-3 left-3 px-2 py-0.5 rounded-lg bg-emerald-500/90 backdrop-blur-md text-white text-[8px] font-bold uppercase">
+                                                                ✨ New
+                                                            </div>
                                                         )}
                                                     </div>
-                                                    
-                                                    <p className="text-xs text-white/60 mb-2 line-clamp-2 leading-relaxed">
-                                                        {gym.address}
-                                                    </p>
-                                                    
-                                                    {viewMode === 'list' && (
-                                                        <div className="flex flex-wrap gap-2 mb-2">
-                                                            <span className="text-xs bg-white/10 text-white/70 px-2 py-0.5 rounded backdrop-blur-sm">
-                                                                📍 {gym.city?.name || 'Perak'}
-                                                            </span>
-                                                            <span className="text-xs bg-white/10 text-white/70 px-2 py-0.5 rounded backdrop-blur-sm">
-                                                                ⭐ {gym.average_rating ? Number(gym.average_rating).toFixed(1) : 'N/A'}
-                                                            </span>
-                                                            {gym.category && (
-                                                                <span className="text-xs bg-white/10 text-white/70 px-2 py-0.5 rounded backdrop-blur-sm">
-                                                                    {gym.category.name}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    )}
+                                                )}
 
-                                                    {/* Facilities Icons */}
-                                                    {gym.facilities && gym.facilities.length > 0 && (
-                                                        <div className="flex flex-wrap gap-1.5 mb-3">
-                                                            {gym.facilities.slice(0, viewMode === 'list' ? 5 : 4).map((facility) => (
-                                                                <span
-                                                                    key={facility.id}
-                                                                    className="text-[10px] bg-white/10 text-white/70 border border-white/10 px-2 py-0.5 rounded-md backdrop-blur-sm flex items-center gap-1"
+                                                {/* Content Section */}
+                                                <div className={`p-6 flex-1 flex flex-col justify-between ${
+                                                    viewMode === 'list' ? 'md:flex-row md:items-center' : ''
+                                                }`}>
+                                                    <div className={viewMode === 'list' ? 'md:flex-1' : ''}>
+                                                        {/* Gym Name */}
+                                                        <div className="flex items-start justify-between">
+                                                            <h3 className="text-xl font-bold text-white mb-1 tracking-tight group-hover:text-amber-400 transition-colors line-clamp-1">
+                                                                {gym.name}
+                                                            </h3>
+                                                            {viewMode === 'grid' && (
+                                                                <button 
+                                                                    className="text-white/30 hover:text-amber-400 transition-colors ml-2 flex-shrink-0"
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        e.stopPropagation();
+                                                                        // Toggle favorite
+                                                                    }}
                                                                 >
-                                                                    {facility.icon || '✓'} {facility.name}
-                                                                </span>
-                                                            ))}
-                                                            {gym.facilities.length > 4 && viewMode === 'grid' && (
-                                                                <span className="text-[10px] text-white/40">
-                                                                    +{gym.facilities.length - 4} more
-                                                                </span>
+                                                                    ♡
+                                                                </button>
                                                             )}
                                                         </div>
-                                                    )}
-                                                    
-                                                    {viewMode === 'list' && (
-                                                        <p className="text-xs text-white/50">
-                                                            🕐 {hours}
+                                                        
+                                                        <p className="text-xs text-white/60 mb-2 line-clamp-2 leading-relaxed">
+                                                            {gym.address}
                                                         </p>
-                                                    )}
-                                                </div>
+                                                        
+                                                        {viewMode === 'list' && (
+                                                            <div className="flex flex-wrap gap-2 mb-2">
+                                                                <span className="text-xs bg-white/10 text-white/70 px-2 py-0.5 rounded backdrop-blur-sm">
+                                                                    📍 {gym.city?.name || 'Perak'}
+                                                                </span>
+                                                                <span className="text-xs bg-white/10 text-white/70 px-2 py-0.5 rounded backdrop-blur-sm">
+                                                                    ⭐ {formatRating(gym.average_rating)}
+                                                                </span>
+                                                            </div>
+                                                        )}
 
-                                                {/* Action Buttons */}
-                                                <div className={`${viewMode === 'list' ? 'md:ml-6 md:min-w-[200px]' : ''}`}>
-                                                    <div className="grid grid-cols-2 gap-3 pt-4 border-t border-white/10">
-                                                        {waUrl ? (
+                                                        {/* Facilities */}
+                                                        {gym.facilities && gym.facilities.length > 0 && (
+                                                            <div className="flex flex-wrap gap-1.5 mb-3">
+                                                                {gym.facilities.slice(0, viewMode === 'list' ? 5 : 4).map((facility) => (
+                                                                    <span
+                                                                        key={facility.id}
+                                                                        className="text-[10px] bg-white/10 text-white/70 border border-white/10 px-2 py-0.5 rounded-md backdrop-blur-sm flex items-center gap-1"
+                                                                    >
+                                                                        {facility.icon || '✓'} {facility.name}
+                                                                    </span>
+                                                                ))}
+                                                                {gym.facilities.length > 4 && viewMode === 'grid' && (
+                                                                    <span className="text-[10px] text-white/40">
+                                                                        +{gym.facilities.length - 4} more
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Action Buttons */}
+                                                    <div className={`${viewMode === 'list' ? 'md:ml-6 md:min-w-[200px]' : ''}`}>
+                                                        <div className="grid grid-cols-2 gap-3 pt-4 border-t border-white/10">
+                                                            {waUrl ? (
+                                                                <a
+                                                                    href={waUrl}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="flex items-center justify-center gap-2 bg-emerald-500/20 hover:bg-emerald-500 text-emerald-400 hover:text-white border border-emerald-500/30 font-bold text-xs py-2.5 px-3 rounded-xl transition-all duration-300 hover:scale-105 backdrop-blur-sm"
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                >
+                                                                    <span>💬 WhatsApp</span>
+                                                                </a>
+                                                            ) : (
+                                                                <button
+                                                                    disabled
+                                                                    className="bg-white/5 text-white/30 text-xs font-semibold py-2.5 px-3 rounded-xl cursor-not-allowed backdrop-blur-sm"
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                >
+                                                                    No WhatsApp
+                                                                </button>
+                                                            )}
+
                                                             <a
-                                                                href={waUrl}
+                                                                href={mapUrl}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
-                                                                className="flex items-center justify-center gap-2 bg-emerald-500/20 hover:bg-emerald-500 text-emerald-400 hover:text-white border border-emerald-500/30 font-bold text-xs py-2.5 px-3 rounded-xl transition-all duration-300 hover:scale-105 backdrop-blur-sm"
+                                                                className="flex items-center justify-center gap-2 bg-amber-500/20 hover:bg-amber-500 text-amber-400 hover:text-white border border-amber-500/30 font-bold text-xs py-2.5 px-3 rounded-xl transition-all duration-300 hover:scale-105 backdrop-blur-sm"
+                                                                onClick={(e) => e.stopPropagation()}
                                                             >
-                                                                <span>💬 WhatsApp</span>
+                                                                <span>🗺️ Location</span>
                                                             </a>
-                                                        ) : (
-                                                            <button
-                                                                disabled
-                                                                className="bg-white/5 text-white/30 text-xs font-semibold py-2.5 px-3 rounded-xl cursor-not-allowed backdrop-blur-sm"
-                                                            >
-                                                                No WhatsApp
-                                                            </button>
-                                                        )}
-
-                                                        <a
-                                                            href={mapUrl}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="flex items-center justify-center gap-2 bg-amber-500/20 hover:bg-amber-500 text-amber-400 hover:text-white border border-amber-500/30 font-bold text-xs py-2.5 px-3 rounded-xl transition-all duration-300 hover:scale-105 backdrop-blur-sm"
-                                                        >
-                                                            <span>🗺️ Location</span>
-                                                        </a>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
+                                        </Link>
                                     );
                                 })}
                             </div>
@@ -827,10 +971,12 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                                     onClick={() => router.get('/', { 
                                         page: gyms.current_page - 1, 
                                         search: searchTerm, 
-                                        category_id: selectedCategory,
-                                        district: selectedDistrict,
-                                        city: selectedCity,
-                                        facilities: selectedFacilities.join(',')
+                                        category_ids: selectedCategory ? [selectedCategory] : [],
+                                        state_id: selectedState,
+                                        district_id: selectedDistrict,
+                                        city_id: selectedCity,
+                                        facility_ids: selectedFacilities,
+                                        sort: sortBy
                                     })}
                                     disabled={gyms.current_page <= 1}
                                     className="px-4 py-2 rounded-xl bg-black/30 backdrop-blur-sm text-white/70 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/10 transition border border-white/10"
@@ -844,10 +990,12 @@ export default function Home({ gyms = {}, filters = {}, categories = [], facilit
                                     onClick={() => router.get('/', { 
                                         page: gyms.current_page + 1,
                                         search: searchTerm, 
-                                        category_id: selectedCategory,
-                                        district: selectedDistrict,
-                                        city: selectedCity,
-                                        facilities: selectedFacilities.join(',')
+                                        category_ids: selectedCategory ? [selectedCategory] : [],
+                                        state_id: selectedState,
+                                        district_id: selectedDistrict,
+                                        city_id: selectedCity,
+                                        facility_ids: selectedFacilities,
+                                        sort: sortBy
                                     })}
                                     disabled={gyms.current_page >= gyms.last_page}
                                     className="px-4 py-2 rounded-xl bg-black/30 backdrop-blur-sm text-white/70 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/10 transition border border-white/10"

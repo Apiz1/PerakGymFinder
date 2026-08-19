@@ -65,6 +65,13 @@ export default function OwnerLayout({ children, title = 'Owner Dashboard' }) {
             requiresGym: true
         },
         { 
+            name: 'Reports', 
+            path: '/owner/gym/reports', 
+            icon: '🚨',
+            badge: gym?.reports_count || 0,
+            requiresGym: true
+        },
+        { 
             name: 'Settings', 
             path: '/owner/settings', 
             icon: '⚙️',
@@ -371,13 +378,7 @@ export default function OwnerLayout({ children, title = 'Owner Dashboard' }) {
                                                     e.preventDefault();
                                                 }
                                             }}
-                                            className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all group ${
-                                                active
-                                                    ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                                                    : disabled
-                                                        ? 'text-slate-600 cursor-not-allowed opacity-50'
-                                                        : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
-                                            }`}
+                                            className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all group ${active ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : disabled ? 'text-slate-600 cursor-not-allowed opacity-50' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'}`}
                                         >
                                             <div className="flex items-center gap-3">
                                                 <span className={`text-base transition-transform ${!disabled && 'group-hover:scale-110'} ${active ? 'opacity-100' : 'opacity-70'}`}>
@@ -391,9 +392,7 @@ export default function OwnerLayout({ children, title = 'Owner Dashboard' }) {
                                                 )}
                                             </div>
                                             {item.badge > 0 && (
-                                                <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${
-                                                    active ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-300'
-                                                }`}>
+                                                <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${active ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-300'}`}>
                                                     {item.badge}
                                                 </span>
                                             )}
@@ -478,13 +477,7 @@ export default function OwnerLayout({ children, title = 'Owner Dashboard' }) {
                                             <Link
                                                 key={item.name}
                                                 href={disabled ? '#' : item.path}
-                                                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium ${
-                                                    isActive(item.path) 
-                                                        ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' 
-                                                        : disabled
-                                                            ? 'text-slate-600 cursor-not-allowed opacity-50'
-                                                            : 'text-slate-400'
-                                                }`}
+                                                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium ${isActive(item.path) ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : disabled ? 'text-slate-600 cursor-not-allowed opacity-50' : 'text-slate-400'}`}
                                             >
                                                 <div className="flex items-center gap-3">
                                                     <span>{item.icon}</span>
