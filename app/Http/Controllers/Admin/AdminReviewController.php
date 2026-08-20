@@ -84,6 +84,11 @@ class AdminReviewController extends Controller
      * keeps them in sync automatically, so any status change or deletion
      * here has to recompute them manually. Only `approved` reviews count
      * toward the public rating, matching AdminController's dashboard metric.
+     *
+     * average_rating/total_reviews are deliberately NOT in Gym's $fillable
+     * (shouldn't be mass-assignable from user-facing request data), so
+     * forceFill()->save() is used instead of update(), which would
+     * otherwise silently do nothing to these two columns.
      */
     private function recalculateGymRating(Review $review, ?\App\Models\Gym $gym = null): void
     {
@@ -91,9 +96,9 @@ class AdminReviewController extends Controller
 
         $approved = $gym->reviews()->approved();
 
-        $gym->update([
+        $gym->forceFill([
             'average_rating' => $approved->avg('rating') ?? 0,
             'total_reviews' => $approved->count(),
-        ]);
+        ])->save();
     }
 }

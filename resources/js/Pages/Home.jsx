@@ -701,7 +701,13 @@ export default function Home({
                                     <select
                                         value={sortBy}
                                         onChange={(e) => handleSortChange(e.target.value)}
-                                        className="bg-white/5 border border-white/10 text-white text-xs rounded-xl px-2 py-1 focus:outline-none focus:border-amber-500/50 transition-all cursor-pointer"
+                                       className="bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 text-slate-200 text-xs rounded-xl px-3 py-1.5 pr-8 focus:outline-none focus:border-amber-500/70 focus:ring-2 focus:ring-amber-500/20 transition-all cursor-pointer appearance-none min-w-[140px] font-medium"
+                                            style={{
+                                                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+                                                backgroundRepeat: 'no-repeat',
+                                                backgroundPosition: 'right 10px center',
+                                                backgroundSize: '10px'
+                                            }}
                                     >
                                         <option value="rating">Rating (High→Low)</option>
                                         <option value="newest">Newest</option>

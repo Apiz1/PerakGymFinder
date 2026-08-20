@@ -9,6 +9,7 @@ use App\Models\Facility;
 use App\Models\Gym;
 use App\Models\State;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -104,6 +105,69 @@ class GymController extends Controller
 
         return Inertia::render('Gyms/Show', [
             'gym' => $gym,
+            'formattedHours' => $this->formatOperatingHours($gym),
+            'openStatus' => $this->openStatus($gym),
         ]);
+    }
+
+    /**
+     * Turns the raw 7-day gym_operating_hours rows into a display-ready
+     * schedule — day names instead of 0-6, 12-hour times instead of
+     * "14:00:00", and a flag for which row is "today" so the frontend
+     * can highlight it without recomputing the weekday itself.
+     */
+    private function formatOperatingHours(Gym $gym): array
+    {
+        $today = (int) Carbon::now()->dayOfWeek; // Carbon: 0 = Sunday ... 6 = Saturday, matches day_of_week
+
+        $hoursByDay = $gym->operatingHours->keyBy('day_of_week');
+
+        return collect(range(0, 6))->map(function ($dayNumber) use ($hoursByDay, $today) {
+            $hours = $hoursByDay->get($dayNumber);
+
+            return [
+                'day_of_week' => $dayNumber,
+                'day_name' => $hours?->day_name ?? Carbon::now()->startOfWeek(Carbon::SUNDAY)->addDays($dayNumber)->format('l'),
+                'is_today' => $dayNumber === $today,
+                'is_closed' => $hours?->is_closed ?? true,
+                'open_time' => $hours && ! $hours->is_closed ? Carbon::parse($hours->open_time)->format('g:i A') : null,
+                'close_time' => $hours && ! $hours->is_closed ? Carbon::parse($hours->close_time)->format('g:i A') : null,
+            ];
+        })->values()->all();
+    }
+
+    /**
+     * "Open now / closes at X" or "Closed / opens at X" — computed against
+     * the actual current time, for the sticky info-block treatment from
+     * the design suggestions rather than a static day-by-day table.
+     */
+    private function openStatus(Gym $gym): array
+    {
+        $now = Carbon::now();
+        $today = (int) $now->dayOfWeek;
+
+        $todayHours = $gym->operatingHours->firstWhere('day_of_week', $today);
+
+        if (! $todayHours || $todayHours->is_closed || ! $todayHours->open_time || ! $todayHours->close_time) {
+            return ['is_open' => false, 'label' => 'Closed today'];
+        }
+
+        $openTime = Carbon::parse($todayHours->open_time);
+        $closeTime = Carbon::parse($todayHours->close_time);
+        $nowTime = Carbon::parse($now->format('H:i:s'));
+
+        if ($nowTime->between($openTime, $closeTime)) {
+            return [
+                'is_open' => true,
+                'label' => 'Open now · closes '.$closeTime->format('g:i A'),
+            ];
+        }
+
+        return [
+            'is_open' => false,
+            'label' => $nowTime->lt($openTime)
+                ? 'Closed · opens '.$openTime->format('g:i A').' today'
+                : 'Closed for today',
+        ];
     }
 }

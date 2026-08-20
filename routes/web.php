@@ -20,7 +20,9 @@ use App\Http\Controllers\Owner\OwnerMembershipController;
 use App\Http\Controllers\Owner\OwnerReviewController;
 use App\Http\Controllers\Owner\PhotoGymController;
 use App\Http\Controllers\Owner\OwnerReportController;
+use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\GymReportController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -52,7 +54,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/apply-owner/status', [GymOwnerApplicationController::class, 'status'])->name('owner-applications.status');
 
     Route::post('/gyms/{gym}/reviews', [ReviewController::class, 'store'])->name('reviews.store');
-    Route::post('/gyms/{gym}/report', [GymReportController::class, 'store'])->name('gyms.report');
+    Route::get('/gyms/{gym}/report', [GymReportController::class, 'create'])->name('gyms.report.create');
+    Route::post('/gyms/{gym}/report/store', [GymReportController::class, 'store'])->name('gyms.report');
 });
 
 /*

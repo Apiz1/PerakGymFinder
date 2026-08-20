@@ -7,9 +7,39 @@ use App\Models\GymReport;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class GymReportController extends Controller
 {
+    /**
+     * The reason options shown on the report form — kept as a single
+     * source of truth here so the labels shown to the user and the
+     * values validated in store() can never drift out of sync.
+     */
+    private const REASONS = [
+        'wrong_info' => 'Incorrect information (address, phone, hours, etc.)',
+        'closed' => 'This gym has permanently closed',
+        'duplicate' => 'Duplicate listing',
+        'other' => 'Something else (e.g. broken equipment, facility issue)',
+    ];
+
+    /**
+     * Report page for a specific gym — lets the user pick a reason before
+     * submitting, rather than a bare inline form with no context.
+     */
+    public function create(Gym $gym): Response
+    {
+        abort_unless($gym->status === 'approved', 404);
+
+        return Inertia::render('Gyms/Report', [
+            'gym' => $gym->only(['id', 'name', 'slug', 'address']),
+            'reasons' => collect(self::REASONS)
+                ->map(fn ($label, $value) => ['value' => $value, 'label' => $label])
+                ->values(),
+        ]);
+    }
+
     /**
      * Submit a report on a gym — open to any logged-in user (not role-gated,
      * same reasoning as GymOwnerApplicationController: reporting a problem
@@ -30,6 +60,8 @@ class GymReportController extends Controller
             'status' => 'open',
         ]);
 
-        return back()->with('success', 'Thanks — your report has been submitted for review.');
+        return redirect()
+            ->route('gyms.show', $gym)
+            ->with('success', 'Thanks — your report has been submitted for review.');
     }
 }

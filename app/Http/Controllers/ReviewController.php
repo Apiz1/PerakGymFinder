@@ -47,9 +47,13 @@ class ReviewController extends Controller
     {
         $approved = $gym->reviews()->approved();
 
-        $gym->update([
+        // average_rating/total_reviews are deliberately NOT in Gym's $fillable
+        // (they shouldn't be mass-assignable from user-facing request data) —
+        // so forceFill()->save() is used here instead of update(), which would
+        // otherwise silently do nothing to these two columns.
+        $gym->forceFill([
             'average_rating' => $approved->avg('rating') ?? 0,
             'total_reviews' => $approved->count(),
-        ]);
+        ])->save();
     }
 }

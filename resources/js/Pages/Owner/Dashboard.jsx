@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import OwnerLayout from '@/Layouts/OwnerLayout';
 
-export default function Dashboard({ gym = null, metrics = {}, recentReviews = [], recentViews = [] }) {
+export default function Dashboard({ gym = null, recentReviews = [], stats = {} }) {
     const [isProcessing, setIsProcessing] = useState(false);
 
     // Check if owner has a gym
@@ -26,7 +26,6 @@ export default function Dashboard({ gym = null, metrics = {}, recentReviews = []
     const handleQuickAction = (action, confirmMessage) => {
         if (confirmMessage && !confirm(confirmMessage)) return;
         setIsProcessing(true);
-        // Implement your action logic here
         setTimeout(() => setIsProcessing(false), 1000);
     };
 
@@ -79,7 +78,7 @@ export default function Dashboard({ gym = null, metrics = {}, recentReviews = []
                 )}
             </div>
 
-            {/* 2. METRICS CARDS GRID */}
+            {/* 2. METRICS CARDS GRID - MATCHED TO CONTROLLER */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Metric 1 - Total Views */}
                 <div className="bg-slate-900/80 border border-slate-800/80 hover:border-slate-700/80 p-5 rounded-2xl transition-all duration-300 hover:-translate-y-0.5 shadow-xl group">
@@ -93,11 +92,11 @@ export default function Dashboard({ gym = null, metrics = {}, recentReviews = []
                         </div>
                     </div>
                     <div className="text-3xl font-black text-white mt-3 tracking-tight">
-                        {metrics.totalViews || 0}
+                        {stats.totalViews || 0}
                     </div>
                     <div className="text-[11px] text-emerald-400 mt-2 font-medium flex items-center gap-1">
                         <span>↑</span>
-                        <span>{metrics.viewsChange || '0 this week'}</span>
+                        <span>{stats.viewsThisWeek !== null ? `${stats.viewsThisWeek} this week` : 'No data yet'}</span>
                     </div>
                 </div>
 
@@ -112,11 +111,11 @@ export default function Dashboard({ gym = null, metrics = {}, recentReviews = []
                         </div>
                     </div>
                     <div className="text-3xl font-black text-white mt-3 tracking-tight">
-                        {metrics.avgRating || '0.0'}
+                        {stats.averageRating !== undefined ? Number(stats.averageRating).toFixed(1) : '0.0'}
                     </div>
                     <div className="text-[11px] text-slate-400 mt-2 font-medium flex items-center gap-1">
                         <span>★</span>
-                        <span>Based on {metrics.totalReviews || 0} reviews</span>
+                        <span>Based on {stats.totalReviews || 0} reviews</span>
                     </div>
                 </div>
 
@@ -131,11 +130,11 @@ export default function Dashboard({ gym = null, metrics = {}, recentReviews = []
                         </div>
                     </div>
                     <div className="text-3xl font-black text-white mt-3 tracking-tight">
-                        {metrics.totalReviews || 0}
+                        {stats.totalReviews || 0}
                     </div>
                     <div className="text-[11px] text-amber-400 mt-2 font-medium flex items-center gap-1">
                         <span>💬</span>
-                        <span>{metrics.pendingReviews || 0} pending replies</span>
+                        <span>{stats.pendingReplies || 0} pending replies</span>
                     </div>
                 </div>
 
@@ -150,11 +149,11 @@ export default function Dashboard({ gym = null, metrics = {}, recentReviews = []
                         </div>
                     </div>
                     <div className="text-3xl font-black text-white mt-3 tracking-tight">
-                        {metrics.favorites || 0}
+                        {stats.favoritesCount || 0}
                     </div>
                     <div className="text-[11px] text-emerald-400 mt-2 font-medium flex items-center gap-1">
                         <span>↑</span>
-                        <span>{metrics.favoritesChange || '0 new this week'}</span>
+                        <span>{stats.favoritesThisWeek || 0} new this week</span>
                     </div>
                 </div>
             </div>
@@ -182,7 +181,7 @@ export default function Dashboard({ gym = null, metrics = {}, recentReviews = []
                         </div>
 
                         <div className="flex-1 overflow-y-auto max-h-80">
-                            {recentReviews.length > 0 ? (
+                            {recentReviews && recentReviews.length > 0 ? (
                                 <div className="divide-y divide-slate-800/60">
                                     {recentReviews.map((review, index) => (
                                         <div key={index} className="px-5 py-4 hover:bg-slate-800/30 transition-colors">
@@ -202,10 +201,18 @@ export default function Dashboard({ gym = null, metrics = {}, recentReviews = []
                                             <p className="text-xs text-slate-400 mt-1 line-clamp-2">
                                                 {review.comment || 'No comment provided'}
                                             </p>
-                                            {!review.replied && (
-                                                <button className="mt-2 text-xs font-semibold text-amber-400 hover:text-amber-300 transition">
+                                            {!review.reply && (
+                                                <Link
+                                                    href="/owner/gym/reviews"
+                                                    className="mt-2 text-xs font-semibold text-amber-400 hover:text-amber-300 transition inline-block"
+                                                >
                                                     Reply to review →
-                                                </button>
+                                                </Link>
+                                            )}
+                                            {review.reply && (
+                                                <div className="mt-2 text-xs text-emerald-400">
+                                                    ✅ Replied
+                                                </div>
                                             )}
                                         </div>
                                     ))}
@@ -237,7 +244,6 @@ export default function Dashboard({ gym = null, metrics = {}, recentReviews = []
                                 </div>
                             </div>
                             <div className="p-5 space-y-3">
-                                {/* Edit Gym Details - Uses route helper */}
                                 <Link
                                     href={route('owner.gym.edit')}
                                     className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 transition group"
@@ -250,7 +256,6 @@ export default function Dashboard({ gym = null, metrics = {}, recentReviews = []
                                     </span>
                                 </Link>
 
-                                {/* Manage Photos - Uses route helper */}
                                 <Link
                                     href={route('owner.gym.photos.index')}
                                     className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 transition group"
@@ -263,7 +268,6 @@ export default function Dashboard({ gym = null, metrics = {}, recentReviews = []
                                     </span>
                                 </Link>
 
-                                {/* Update Operating Hours */}
                                 <Link
                                     href={route('owner.gym.hours.edit')}
                                     className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 transition group"
@@ -276,7 +280,6 @@ export default function Dashboard({ gym = null, metrics = {}, recentReviews = []
                                     </span>
                                 </Link>
 
-                                {/* Manage Membership Plans */}
                                 <Link
                                     href={route('owner.gym.memberships.index')}
                                     className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700/50 transition group"
@@ -326,6 +329,18 @@ export default function Dashboard({ gym = null, metrics = {}, recentReviews = []
                                     <span className="text-xs text-slate-400">Location</span>
                                     <span className="text-xs text-slate-300">
                                         {gym.city?.name || 'Not set'}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center py-2 border-t border-slate-800/50 pt-2 mt-2">
+                                    <span className="text-xs text-slate-400">Total Views</span>
+                                    <span className="text-xs text-white font-semibold">
+                                        {stats.totalViews || 0}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center py-2">
+                                    <span className="text-xs text-slate-400">Favorites</span>
+                                    <span className="text-xs text-white font-semibold">
+                                        {stats.favoritesCount || 0}
                                     </span>
                                 </div>
                             </div>

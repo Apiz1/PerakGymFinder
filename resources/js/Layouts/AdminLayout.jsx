@@ -13,8 +13,8 @@ export default function AdminLayout({ children, title = 'Admin Dashboard' }) {
     // Navigation Structure
     const navItems = [
         { name: 'Dashboard', path: '/admin/dashboard', icon: '📊' },
-        { name: 'Gyms', path: '/admin/gyms', icon: '🏋️‍♂️', count: pendingCounts.gyms },
         { name: 'Owner Applications', path: '/admin/owner-applications', icon: '📑', count: pendingCounts.owners },
+        { name: 'Gyms', path: '/admin/gyms', icon: '🏋️‍♂️', count: pendingCounts.gyms },
         { name: 'Reviews', path: '/admin/reviews', icon: '⭐', count: pendingCounts.reviews },
         { name: 'Reports', path: '/admin/reports', icon: '🚩', count: pendingCounts.reports },
         { name: 'Users', path: '/admin/users', icon: '👥' },
