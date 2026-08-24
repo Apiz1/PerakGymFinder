@@ -5,6 +5,7 @@ import AdminLayout from '@/Layouts/AdminLayout';
 export default function Show({ gym }) {
     const [activeTab, setActiveTab] = useState('overview');
     const [isProcessing, setIsProcessing] = useState(false);
+    const [notification, setNotification] = useState(null);
 
     // Status Badge Color Mapper
     const getStatusBadge = (status) => {
@@ -22,23 +23,112 @@ export default function Show({ gym }) {
         }
     };
 
+    // Notification Helper
+    const showNotification = (type, message, onConfirm) => {
+        setNotification({
+            type,
+            message,
+            onConfirm,
+            isOpen: true
+        });
+    };
+
+    const closeNotification = () => {
+        setNotification(null);
+    };
+
     // Generic Action Handler for Status Changes
     const handleStatusChange = (actionName, routeName) => {
-        if (confirm(`Are you sure you want to ${actionName} this gym listing?`)) {
-            setIsProcessing(true);
-            router.post(
-                route(routeName, gym.id),
-                {},
-                {
-                    onFinish: () => setIsProcessing(false),
-                }
-            );
-        }
+        showNotification(
+            actionName === 'suspend' ? 'warning' : 'default',
+            `Are you sure you want to ${actionName} this gym listing?`,
+            () => {
+                setIsProcessing(true);
+                router.post(
+                    route(routeName, gym.id),
+                    {},
+                    {
+                        onFinish: () => {
+                            setIsProcessing(false);
+                            closeNotification();
+                        },
+                    }
+                );
+            }
+        );
     };
 
     return (
         <div className="space-y-6 pb-12">
             <Head title={`Gym: ${gym.name}`} />
+
+            {/* NOTIFICATION MODAL */}
+            {notification && notification.isOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="relative bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        {/* Header with icon */}
+                        <div className="px-6 pt-6 pb-4">
+                            <div className="flex items-start gap-4">
+                                <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                                    notification.type === 'warning' 
+                                        ? 'bg-amber-500/10 text-amber-400'
+                                        : notification.type === 'danger'
+                                        ? 'bg-rose-500/10 text-rose-400'
+                                        : 'bg-emerald-500/10 text-emerald-400'
+                                }`}>
+                                    {notification.type === 'warning' ? (
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                        </svg>
+                                    ) : notification.type === 'danger' ? (
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                        </svg>
+                                    ) : (
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="text-sm font-bold text-white">
+                                        {notification.type === 'warning' ? 'Confirm Action' : 
+                                         notification.type === 'danger' ? 'Confirm Deletion' : 
+                                         'Confirm Action'}
+                                    </h3>
+                                    <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                                        {notification.message}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="px-6 pb-6 flex flex-col sm:flex-row items-center justify-end gap-3">
+                            <button
+                                onClick={closeNotification}
+                                className="w-full sm:w-auto px-6 py-2.5 text-xs font-bold text-slate-400 bg-slate-800 hover:bg-slate-700 rounded-xl border border-slate-700 transition-all hover:text-white"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={notification.onConfirm}
+                                className={`w-full sm:w-auto px-6 py-2.5 text-xs font-bold text-white rounded-xl border transition-all ${
+                                    notification.type === 'warning'
+                                        ? 'bg-amber-500 hover:bg-amber-600 border-amber-500/30 hover:border-amber-400'
+                                        : notification.type === 'danger'
+                                        ? 'bg-rose-500 hover:bg-rose-600 border-rose-500/30 hover:border-rose-400'
+                                        : 'bg-emerald-500 hover:bg-emerald-600 border-emerald-500/30 hover:border-emerald-400'
+                                }`}
+                            >
+                                {notification.type === 'warning' ? 'Confirm' : 
+                                 notification.type === 'danger' ? 'Delete' : 
+                                 'Confirm'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* 1. TOP BREADCRUMB & BACK BUTTON */}
             <div className="flex items-center justify-between">
@@ -69,7 +159,6 @@ export default function Show({ gym }) {
                                 alt={gym.name}
                                 className="w-20 h-20 rounded-xl object-cover border border-slate-700/80 shadow-md flex-shrink-0"
                                 onError={(e) => {
-                                    // Fallback to placeholder if image fails to load
                                     e.target.src = 'https://via.placeholder.com/80x80?text=🏋️';
                                 }}
                             />
@@ -222,7 +311,6 @@ export default function Show({ gym }) {
                                                     alt="Gym upload"
                                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                                                     onError={(e) => {
-                                                        // Fallback to placeholder if image fails to load
                                                         e.target.src = 'https://via.placeholder.com/600x400?text=GymFinder+Perak';
                                                     }}
                                                 />
@@ -332,15 +420,12 @@ export default function Show({ gym }) {
                 <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden p-6">
                     <h3 className="text-sm font-bold text-white uppercase tracking-wider text-slate-400 mb-4">Weekly Schedule</h3>
                     
-                    {/* Days of week in order */}
                     {(() => {
                         const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
                         
-                        // Create a map of existing hours by day name
                         const hoursMap = {};
                         if (gym.operating_hours && gym.operating_hours.length > 0) {
                             gym.operating_hours.forEach(oh => {
-                                // If day_of_week is stored as number (0-6), convert to day name
                                 const dayName = typeof oh.day_of_week === 'number' 
                                     ? ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][oh.day_of_week]
                                     : oh.day_of_week;
@@ -455,5 +540,4 @@ export default function Show({ gym }) {
 }
 
 // Attach persistent layout
-// ✅ CORRECT: Proper Inertia persistent layout function
 Show.layout = (page) => <AdminLayout children={page} />;

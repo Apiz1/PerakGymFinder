@@ -34,6 +34,15 @@ class OwnerReportController extends Controller
         ]);
     }
 
+    public function show(GymReport $report): Response
+    {
+        $report->load(['gym', 'user:id,name,email']);
+
+        return Inertia::render('Owner/Gym/ReportShow', [
+            'report' => $report,
+        ]);
+    }
+
     /**
      * Marks a report as "seen" by moving it from open -> resolved, purely
      * from the owner's side acknowledging it (e.g. "yes, I fixed the
