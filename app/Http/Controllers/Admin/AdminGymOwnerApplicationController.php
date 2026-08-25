@@ -22,10 +22,14 @@ class AdminGymOwnerApplicationController extends Controller
     public function index(Request $request): Response
     {
         $status = $request->input('status', 'pending');
+        $search = $request->input('search');
 
         $applications = GymOwnerApplication::query()
             ->with(['user:id,name,email', 'gym:id,name,address'])
             ->when($status, fn ($query) => $query->where('status', $status))
+             ->when($search, function ($query, $search) {
+                $query->where('name', 'ilike', "%{$search}%");
+                })
             ->latest()
             ->paginate(15)
             ->withQueryString();
@@ -37,7 +41,7 @@ class AdminGymOwnerApplicationController extends Controller
 
         return Inertia::render('Admin/OwnerApplications/Index', [
             'applications' => $applications,
-            'filters' => $request->only('status'),
+            'filters' => $request->only('status','search'),
             'statusCounts' => [
                 'pending' => $counts->get('pending', 0),
                 'approved' => $counts->get('approved', 0),

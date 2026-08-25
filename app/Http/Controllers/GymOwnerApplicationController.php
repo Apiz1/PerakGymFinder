@@ -9,6 +9,7 @@ use App\Models\Facility;
 use App\Models\Gym;
 use App\Models\GymOwnerApplication;
 use App\Models\State;
+use App\Models\Notification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -94,7 +95,7 @@ class GymOwnerApplicationController extends Controller
 
         $docPath = $request->file('business_doc')->store('owner-applications', 'local');
 
-        GymOwnerApplication::create([
+       GymOwnerApplication::create([
             'user_id' => $user->id,
             'gym_id' => $validated['application_type'] === 'claim' ? $validated['gym_id'] : null,
             'proposed_gym_details' => $validated['application_type'] === 'new'
@@ -111,6 +112,11 @@ class GymOwnerApplicationController extends Controller
                 : null,
             'business_doc_path' => $docPath,
             'status' => 'pending',
+        ]);
+
+        Notification::notifyAdmins('new_owner_application', [
+            'applicant_name' => $user->name,
+            'application_type' => $validated['application_type'],
         ]);
 
         return redirect()

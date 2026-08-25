@@ -10,6 +10,7 @@ use App\Models\Facility;
 use App\Models\Gym;
 use App\Models\GymOwnerApplication;
 use App\Models\State;
+use App\Models\Notification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -79,6 +80,11 @@ class CreateGymController extends Controller
             'slug' => Str::slug($validated['name']).'-'.Str::random(5),
             'source' => 'owner_submitted',
             'status' => 'pending',
+        ]);
+        
+        Notification::notifyAdmins('gym_pending_approval', [
+            'gym_id' => $gym->id,
+            'gym_name' => $gym->name,
         ]);
 
         $gym->facilities()->sync($validated['facility_ids'] ?? []);

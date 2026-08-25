@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Gym;
+use App\Models\Notification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -25,7 +26,7 @@ class ReviewController extends Controller
             'comment' => 'nullable|string|max:2000',
         ]);
 
-        $gym->reviews()->create([
+        $review = $gym->reviews()->create([
             'user_id' => Auth::id(),
             'rating' => $validated['rating'],
             'comment' => $validated['comment'] ?? null,
@@ -33,6 +34,18 @@ class ReviewController extends Controller
         ]);
 
         $this->recalculateGymRating($gym);
+
+        // Owner-only — unclaimed/scraped gyms (owner_id null) have nobody
+        // to notify, same guard used for the report notification below.
+        if ($gym->owner_id) {
+            Notification::notifyUser($gym->owner_id, 'new_review', [
+                'review_id' => $review->id,
+                'gym_id' => $gym->id,
+                'gym_name' => $gym->name,
+                'rating' => $review->rating,
+                'reviewer_name' => Auth::user()->name,
+            ]);
+        }
 
         return back()->with('success', 'Your review has been posted.');
     }

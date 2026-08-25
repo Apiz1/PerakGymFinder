@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Gym;
 use App\Models\GymReport;
+use App\Models\Notification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -52,13 +53,31 @@ class GymReportController extends Controller
             'description' => 'nullable|string|max:1000',
         ]);
 
-        GymReport::create([
+        $report = GymReport::create([
             'gym_id' => $gym->id,
             'user_id' => Auth::id(),
             'reason' => $validated['reason'],
             'description' => $validated['description'] ?? null,
             'status' => 'open',
         ]);
+
+        Notification::notifyAdmins('new_report', [
+            'report_id' => $report->id,
+            'gym_id' => $gym->id,
+            'gym_name' => $gym->name,
+            'reason' => $validated['reason'],
+        ]);
+
+        // Owner-only — unclaimed/scraped gyms (owner_id null) have nobody
+        // to notify.
+        if ($gym->owner_id) {
+            Notification::notifyUser($gym->owner_id, 'new_report', [
+                'report_id' => $report->id,
+                'gym_id' => $gym->id,
+                'gym_name' => $gym->name,
+                'reason' => $validated['reason'],
+            ]);
+        }
 
         return redirect()
             ->route('gyms.show', $gym)

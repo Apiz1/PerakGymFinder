@@ -43,4 +43,42 @@ class Notification extends Model
             $this->update(['read_at' => now()]);
         }
     }
+
+    /**
+     * Fan out a notification to every super_admin — used whenever something
+     * needs admin attention: a new owner application, a gym pending
+     * approval, or a new report. One row per admin, so each admin's
+     * read/unread state is independent (admin A reading it doesn't mark
+     * it read for admin B).
+     */
+    public static function notifyAdmins(string $type, array $data): void
+    {
+        $adminIds = User::whereHas('role', fn ($q) => $q->where('name', 'super_admin'))
+            ->pluck('id');
+
+        $rows = $adminIds->map(fn ($adminId) => [
+            'user_id' => $adminId,
+            'type' => $type,
+            'data' => json_encode($data),
+            'read_at' => null,
+            'created_at' => now(),
+        ]);
+
+        static::insert($rows->all());
+    }
+
+    /**
+     * Notify a single specific user — e.g. a gym owner getting told about
+     * a new review or report on their own gym, as opposed to notifyAdmins()
+     * which fans out to every super_admin at once.
+     */
+    public static function notifyUser(int $userId, string $type, array $data): void
+    {
+        static::create([
+            'user_id' => $userId,
+            'type' => $type,
+            'data' => $data,
+            'read_at' => null,
+        ]);
+    }
 }

@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\LocationController;
 use App\Http\Controllers\Admin\TaxonomyController;
 use App\Http\Controllers\Admin\AdminSearchController;
+use App\Http\Controllers\Admin\AdminNotificationController;
 use App\Http\Controllers\GymController;
 use App\Http\Controllers\GymOwnerApplicationController;
 use App\Http\Controllers\Owner\CreateGymController;
@@ -109,7 +110,12 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->name('admin.')
     Route::post('taxonomy/categories', [TaxonomyController::class, 'storeCategory'])->name('taxonomy.categories.store');
     Route::delete('taxonomy/facilities/{facility}', [TaxonomyController::class, 'destroyFacility'])->name('taxonomy.facilities.destroy');
     Route::delete('taxonomy/categories/{category}', [TaxonomyController::class, 'destroyCategory'])->name('taxonomy.categories.destroy');
-});
+
+    Route::get('notifications', [AdminNotificationController::class, 'index'])->name('notifications.index');
+    Route::post('notifications/{notification}/read', [AdminNotificationController::class, 'markRead'])->name('notifications.read');
+    Route::post('notifications/read-all', [AdminNotificationController::class, 'markAllRead'])->name('notifications.read-all');
+
+    });
 
 /*
 |--------------------------------------------------------------------------
@@ -149,6 +155,10 @@ Route::middleware(['auth', 'role:gym_owner,super_admin'])->prefix('owner')->name
     Route::get('/gym/reports', [OwnerReportController::class, 'index'])->name('gym.reports.index');
     Route::get('/gym/reports/{report}', [OwnerReportController::class, 'show'])->name('gym.reports.show');
     Route::post('/gym/reports/{report}/resolve', [OwnerReportController::class, 'markResolved'])->name('gym.reports.resolve');
+
+    Route::get('notifications', [AdminNotificationController::class, 'index'])->name('notifications.index');
+    Route::post('notifications/{notification}/read', [AdminNotificationController::class, 'markRead'])->name('notifications.read');
+    Route::post('notifications/read-all', [AdminNotificationController::class, 'markAllRead'])->name('notifications.read-all');
 });
 
 require __DIR__.'/auth.php';

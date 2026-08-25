@@ -9,6 +9,9 @@ export default function AdminLayout({ children, title = 'Admin Dashboard' }) {
     const [userDropdown, setUserDropdown] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const [showDropdown, setShowDropdown] = useState(false);
+    const [notifications, setNotifications] = useState([]);
 
     // Navigation Structure
     const navItems = [
@@ -45,6 +48,14 @@ export default function AdminLayout({ children, title = 'Admin Dashboard' }) {
         };
     }, [isLogoutModalOpen]);
 
+    useEffect(() => {
+        // Fixed: Use 'admin.notifications.index' (with .index) since that's your JSON endpoint
+        fetch(route('admin.notifications.index'))
+            .then(res => res.json())
+            .then(data => setUnreadCount(data.unreadCount))
+            .catch(error => console.error('Error fetching notifications:', error));
+    }, []);
+
     // Handle logout with modal
     const handleLogoutClick = () => {
         setUserDropdown(false);
@@ -80,6 +91,52 @@ export default function AdminLayout({ children, title = 'Admin Dashboard' }) {
             return `${names[0].charAt(0)}${names[names.length - 1].charAt(0)}`.toUpperCase();
         }
         return name.charAt(0).toUpperCase();
+    };
+
+    // Get CSRF token safely
+    const getCsrfToken = () => {
+        const metaTag = document.querySelector('meta[name="csrf-token"]');
+        return metaTag ? metaTag.content : '';
+    };
+
+    const toggleDropdown = () => {
+        if (!showDropdown) {
+            // fetch fresh list every time it's opened
+            // Fixed: Use 'admin.notifications.index' (with .index)
+            fetch(route('admin.notifications.index'))
+                .then(res => res.json())
+                .then(data => {
+                    setNotifications(data.notifications);
+                    setUnreadCount(data.unreadCount);
+                })
+                .catch(error => console.error('Error fetching notifications:', error));
+        }
+        setShowDropdown(!showDropdown);
+    };
+
+    const markRead = (notification) => {
+        const csrfToken = getCsrfToken();
+        
+        fetch(route('admin.notifications.read', notification.id), {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'Content-Type': 'application/json',
+            },
+        }).then(() => {
+            setNotifications(prev =>
+                prev.map(n => n.id === notification.id ? { ...n, read_at: new Date().toISOString() } : n)
+            );
+            setUnreadCount(prev => Math.max(0, prev - 1));
+        }).catch(error => console.error('Error marking notification as read:', error));
+    };
+
+    const NOTIFICATION_LABELS = {
+        new_owner_application: 'New gym owner application',
+        gym_pending_approval: 'Gym pending approval',
+        new_report: 'New report filed',
+        gym_review: 'New review posted',
+        system: 'System notification',
     };
 
     return (
@@ -136,20 +193,93 @@ export default function AdminLayout({ children, title = 'Admin Dashboard' }) {
                 {/* Right Actions */}
                 <div className="flex items-center gap-3">
                     {/* Notifications Dropdown Toggle */}
-                    <button className="relative p-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-amber-400 transition">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                        </svg>
-                        {totalPending > 0 && (
-                            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-4 w-4 bg-amber-500 text-[9px] font-bold text-slate-950 justify-center items-center">
-                                    {totalPending}
+                    <div className="relative">
+                        <button
+                            onClick={toggleDropdown}
+                            className="relative p-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-amber-400 transition"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                            </svg>
+                            {unreadCount > 0 && (
+                                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-4 w-4 bg-amber-500 text-[9px] font-bold text-slate-950 justify-center items-center">
+                                        {unreadCount > 9 ? '9+' : unreadCount}
+                                    </span>
                                 </span>
-                            </span>
-                        )}
-                    </button>
+                            )}
+                        </button>
 
+                        {showDropdown && (
+                            <div className="absolute right-0 mt-2 w-80 bg-slate-900 border border-slate-800 rounded-xl shadow-xl overflow-hidden z-20">
+                                <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+                                    <span className="text-xs font-bold text-slate-300 uppercase tracking-wide">Notifications</span>
+                                    {unreadCount > 0 && (
+                                        <button 
+                                            onClick={() => {
+                                                const csrfToken = getCsrfToken();
+                                                fetch(route('admin.notifications.read-all'), {
+                                                    method: 'POST',
+                                                    headers: {
+                                                        'X-CSRF-TOKEN': csrfToken,
+                                                        'Content-Type': 'application/json',
+                                                    },
+                                                })
+                                                .then(() => {
+                                                    setNotifications(prev => 
+                                                        prev.map(n => ({ ...n, read_at: new Date().toISOString() }))
+                                                    );
+                                                    setUnreadCount(0);
+                                                })
+                                                .catch(error => console.error('Error marking all as read:', error));
+                                            }}
+                                            className="text-[10px] font-bold text-amber-400 hover:text-amber-300 transition"
+                                        >
+                                            Mark all read
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="max-h-80 overflow-y-auto">
+                                    {notifications.length > 0 ? (
+                                        notifications.map((n) => (
+                                            <button
+                                                key={n.id}
+                                                onClick={() => markRead(n)}
+                                                className={`block w-full text-left px-4 py-3 border-b border-slate-800/50 hover:bg-slate-800/50 transition ${
+                                                    !n.read_at ? 'bg-slate-800/30' : ''
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    {!n.read_at && <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />}
+                                                    <span className="text-xs font-semibold text-slate-200">
+                                                        {NOTIFICATION_LABELS[n.type] ?? n.type}
+                                                    </span>
+                                                </div>
+                                                <p className="text-[11px] text-slate-500 mt-1">
+                                                    {new Date(n.created_at).toLocaleString()}
+                                                </p>
+                                            </button>
+                                        ))
+                                    ) : (
+                                        <p className="text-xs text-slate-500 px-4 py-6 text-center">No notifications yet.</p>
+                                    )}
+                                </div>
+                                {notifications.length > 0 && (
+                                    <div className="px-4 py-2 border-t border-slate-800 text-center">
+                                        <Link 
+                                            href="/admin/notifications" 
+                                            className="text-xs text-amber-400 hover:text-amber-300 transition"
+                                            onClick={() => setShowDropdown(false)}
+                                        >
+                                            View all notifications →
+                                        </Link>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                    
                     {/* Profile Dropdown */}
                     <div className="relative">
                         <button
