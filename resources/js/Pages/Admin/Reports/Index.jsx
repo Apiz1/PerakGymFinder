@@ -6,6 +6,7 @@ export default function Index({ reports, filters, statusCounts }) {
     const [search, setSearch] = useState(filters.search || '');
     const [processingId, setProcessingId] = useState(null);
     const [notification, setNotification] = useState(null);
+    const [toast, setToast] = useState(null);
     const isFirstRender = useRef(true);
 
     // Filter status tabs helper
@@ -27,15 +28,47 @@ export default function Index({ reports, filters, statusCounts }) {
         }, 350);
 
         return () => clearTimeout(timer);
-    }, [search]);
+    }, [search, currentStatus]);
 
-    // Auto-hide notification
+    // Show toast from flash messages
     useEffect(() => {
-        if (notification) {
-            const timer = setTimeout(() => setNotification(null), 5000);
+        const flash = window?.page?.props?.flash;
+        if (flash?.success) {
+            setToast({
+                type: 'success',
+                message: flash.success
+            });
+            const timer = setTimeout(() => setToast(null), 5000);
             return () => clearTimeout(timer);
         }
-    }, [notification]);
+        if (flash?.error) {
+            setToast({
+                type: 'error',
+                message: flash.error
+            });
+            const timer = setTimeout(() => setToast(null), 5000);
+            return () => clearTimeout(timer);
+        }
+    }, []);
+
+    // Notification Helper
+    const showNotification = (type, message, onConfirm, actionType = 'default') => {
+        setNotification({
+            type,
+            message,
+            onConfirm,
+            actionType,
+            isOpen: true
+        });
+    };
+
+    const closeNotification = () => {
+        setNotification(null);
+    };
+
+    const closeToast = () => {
+        setToast(null);
+    };
 
     // Status Badge Component Helper
     const renderStatusBadge = (status) => {
@@ -85,8 +118,30 @@ export default function Index({ reports, filters, statusCounts }) {
     };
 
     // Quick Action Handlers
-    const handleAction = (id, actionRoute, confirmMessage) => {
-        if (confirmMessage && !confirm(confirmMessage)) return;
+    const handleAction = (id, actionRoute, confirmMessage, actionType = 'default') => {
+        if (confirmMessage) {
+            showNotification(
+                actionType,
+                confirmMessage,
+                () => {
+                    setProcessingId(id);
+                    router.post(
+                        route(actionRoute, id),
+                        {},
+                        {
+                            onFinish: () => {
+                                setProcessingId(null);
+                                closeNotification();
+                            },
+                            preserveScroll: true,
+                            preserveState: true,
+                        }
+                    );
+                },
+                actionType
+            );
+            return;
+        }
 
         setProcessingId(id);
         router.post(
@@ -95,20 +150,7 @@ export default function Index({ reports, filters, statusCounts }) {
             {
                 onFinish: () => setProcessingId(null),
                 preserveScroll: true,
-                onSuccess: () => {
-                    setNotification({
-                        type: 'success',
-                        message: actionRoute === 'admin.reports.resolve' 
-                            ? 'Report resolved successfully!' 
-                            : 'Report dismissed successfully!'
-                    });
-                },
-                onError: () => {
-                    setNotification({
-                        type: 'error',
-                        message: 'Action failed. Please try again.'
-                    });
-                }
+                preserveState: true,
             }
         );
     };
@@ -119,10 +161,6 @@ export default function Index({ reports, filters, statusCounts }) {
             { status: statusValue || undefined, search: search || undefined },
             { preserveState: true, replace: true }
         );
-    };
-
-    const closeNotification = () => {
-        setNotification(null);
     };
 
     // Format date
@@ -145,25 +183,103 @@ export default function Index({ reports, filters, statusCounts }) {
         <div className="space-y-6 pb-12">
             <Head title="Report Moderation" />
 
-            {/* Notification */}
-            {notification && (
-                <div className={`mb-6 p-4 rounded-xl border flex items-start gap-3 animate-in slide-in-from-top-2 duration-300 ${
-                    notification.type === 'success' 
-                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
-                        : 'bg-red-500/10 border-red-500/20 text-red-400'
+            {/* TOAST NOTIFICATION */}
+            {toast && (
+                <div className={`fixed top-20 right-4 z-50 max-w-sm w-full p-4 rounded-xl border shadow-lg animate-in slide-in-from-top-2 duration-300 ${
+                    toast.type === 'success' 
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                        : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
                 }`}>
-                    <span className="text-lg mt-0.5">
-                        {notification.type === 'success' ? '✅' : '❌'}
-                    </span>
-                    <div className="flex-1">
-                        <p className="text-sm font-medium">{notification.message}</p>
+                    <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 mt-0.5">
+                            {toast.type === 'success' ? (
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            ) : (
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            )}
+                        </div>
+                        <div className="flex-1">
+                            <p className="text-sm font-semibold">{toast.message}</p>
+                        </div>
+                        <button 
+                            onClick={closeToast}
+                            className="flex-shrink-0 text-slate-500 hover:text-slate-300 transition"
+                        >
+                            ✕
+                        </button>
                     </div>
-                    <button 
-                        onClick={closeNotification}
-                        className="text-white/40 hover:text-white transition-colors"
-                    >
-                        ✕
-                    </button>
+                </div>
+            )}
+
+            {/* CONFIRMATION NOTIFICATION MODAL */}
+            {notification && notification.isOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="relative bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        {/* Header with icon */}
+                        <div className="px-6 pt-6 pb-4">
+                            <div className="flex items-start gap-4">
+                                <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                                    notification.actionType === 'danger' 
+                                        ? 'bg-rose-500/10 text-rose-400'
+                                        : notification.actionType === 'warning'
+                                        ? 'bg-amber-500/10 text-amber-400'
+                                        : 'bg-emerald-500/10 text-emerald-400'
+                                }`}>
+                                    {notification.actionType === 'danger' ? (
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    ) : notification.actionType === 'warning' ? (
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                        </svg>
+                                    ) : (
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="text-sm font-bold text-white">
+                                        {notification.actionType === 'danger' ? 'Confirm Action' : 
+                                         notification.actionType === 'warning' ? 'Confirm Action' : 
+                                         'Confirm Action'}
+                                    </h3>
+                                    <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                                        {notification.message}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="px-6 pb-6 flex flex-col sm:flex-row items-center justify-end gap-3">
+                            <button
+                                onClick={closeNotification}
+                                className="w-full sm:w-auto px-6 py-2.5 text-xs font-bold text-slate-400 bg-slate-800 hover:bg-slate-700 rounded-xl border border-slate-700 transition-all hover:text-white"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={notification.onConfirm}
+                                className={`w-full sm:w-auto px-6 py-2.5 text-xs font-bold text-white rounded-xl border transition-all ${
+                                    notification.actionType === 'danger'
+                                        ? 'bg-rose-500 hover:bg-rose-600 border-rose-500/30 hover:border-rose-400'
+                                        : notification.actionType === 'warning'
+                                        ? 'bg-amber-500 hover:bg-amber-600 border-amber-500/30 hover:border-amber-400'
+                                        : 'bg-emerald-500 hover:bg-emerald-600 border-emerald-500/30 hover:border-emerald-400'
+                                }`}
+                            >
+                                {notification.actionType === 'danger' ? 'Confirm' : 
+                                 notification.actionType === 'warning' ? 'Confirm' : 
+                                 'Confirm'}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -321,7 +437,8 @@ export default function Index({ reports, filters, statusCounts }) {
                                                         onClick={() => handleAction(
                                                             report.id, 
                                                             'admin.reports.resolve',
-                                                            `Resolve this report?`
+                                                            `Are you sure you want to resolve this report? This action will mark it as resolved.`,
+                                                            'success'
                                                         )}
                                                         className="bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-slate-950 border border-emerald-500/20 px-3 py-1.5 rounded-lg font-bold transition-all disabled:opacity-50 text-xs"
                                                     >
@@ -336,7 +453,8 @@ export default function Index({ reports, filters, statusCounts }) {
                                                         onClick={() => handleAction(
                                                             report.id, 
                                                             'admin.reports.dismiss',
-                                                            `Dismiss this report?`
+                                                            `Are you sure you want to dismiss this report? This action will mark it as dismissed.`,
+                                                            'warning'
                                                         )}
                                                         className="bg-slate-700/50 hover:bg-slate-600 text-slate-300 hover:text-white border border-slate-600 px-3 py-1.5 rounded-lg font-bold transition-all disabled:opacity-50 text-xs"
                                                     >

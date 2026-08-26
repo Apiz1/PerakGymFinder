@@ -27,9 +27,13 @@ class AdminGymOwnerApplicationController extends Controller
         $applications = GymOwnerApplication::query()
             ->with(['user:id,name,email', 'gym:id,name,address'])
             ->when($status, fn ($query) => $query->where('status', $status))
-             ->when($search, function ($query, $search) {
-                $query->where('name', 'ilike', "%{$search}%");
-                })
+            ->when($search, function ($query, $search) {
+                $query->whereHas('user', function ($q) use ($search) {
+                    $q->where('name', 'ilike', "%{$search}%");
+                })->orWhereHas('gym', function ($q) use ($search) {
+                    $q->where('name', 'ilike', "%{$search}%");
+                });
+            })
             ->latest()
             ->paginate(15)
             ->withQueryString();
@@ -41,7 +45,7 @@ class AdminGymOwnerApplicationController extends Controller
 
         return Inertia::render('Admin/OwnerApplications/Index', [
             'applications' => $applications,
-            'filters' => $request->only('status','search'),
+            'filters' => $request->only('status', 'search'),
             'statusCounts' => [
                 'pending' => $counts->get('pending', 0),
                 'approved' => $counts->get('approved', 0),
@@ -131,5 +135,14 @@ class AdminGymOwnerApplicationController extends Controller
         ]);
 
         return back()->with('success', "{$ownerApplication->user->name}'s application has been rejected.");
+    }
+
+    public function destroy(GymOwnerApplication $ownerApplication ): RedirectResponse
+    {
+        $ownerApplication ->delete();
+
+        return redirect()
+            ->route('admin.owner-applications.index')
+            ->with('success', 'Application deleted.');
     }
 }
