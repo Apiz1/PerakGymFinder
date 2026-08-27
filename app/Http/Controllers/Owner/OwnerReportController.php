@@ -13,10 +13,13 @@ use Inertia\Response;
 class OwnerReportController extends Controller
 {
     /**
-     * Reports filed against the owner's own gym — same "no {gym} param"
-     * pattern as Photos/Hours/Facilities/Reviews. Read + acknowledge only;
-     * owners can't dismiss or resolve reports themselves (see below).
+     * Reasons an owner is allowed to see. closed/duplicate are admin-only
+     * moderation concerns — an owner has no business seeing "someone
+     * reported this gym as permanently closed", since resolving that is
+     * an admin decision, not something the owner acts on.
      */
+    private const OWNER_VISIBLE_REASONS = ['wrong_info', 'other'];
+
     public function index(): Response|RedirectResponse
     {
         $gym = Auth::user()->gyms()->first();
@@ -28,6 +31,7 @@ class OwnerReportController extends Controller
         return Inertia::render('Owner/Gym/Reports', [
             'gym' => $gym->only(['id', 'name', 'status']),
             'reports' => $gym->reports()
+                ->whereIn('reason', self::OWNER_VISIBLE_REASONS)
                 ->with('user:id,name')
                 ->latest()
                 ->get(),

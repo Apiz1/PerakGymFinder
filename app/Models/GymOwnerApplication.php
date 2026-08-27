@@ -5,10 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\Support\LogOptions;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
 
 class GymOwnerApplication extends Model
 {
-    use HasFactory;
+    use HasFactory,LogsActivity;
 
     public $timestamps = false; // only created_at, set via useCurrent() in the migration
 
@@ -28,6 +30,26 @@ class GymOwnerApplication extends Model
             'proposed_gym_details' => 'array',
             'reviewed_at' => 'datetime',
         ];
+    }
+
+      /*
+    |--------------------------------------------------------------------
+    | Activity log
+    |--------------------------------------------------------------------
+    */
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'user_id',
+                'gym_id',
+                'status',
+                'reviewed_by',
+                'reviewed_at',
+            ])
+            ->logOnlyDirty()
+            ->setDescriptionForEvent(fn (string $eventName) => "Gym was {$eventName}");
     }
 
     /** The applicant. */

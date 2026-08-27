@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\LocationController;
 use App\Http\Controllers\Admin\TaxonomyController;
 use App\Http\Controllers\Admin\AdminSearchController;
 use App\Http\Controllers\Admin\AdminNotificationController;
+use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\GymController;
 use App\Http\Controllers\GymOwnerApplicationController;
 use App\Http\Controllers\Owner\CreateGymController;
@@ -116,6 +117,9 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->name('admin.')
     Route::post('notifications/{notification}/read', [AdminNotificationController::class, 'markRead'])->name('notifications.read');
     Route::post('notifications/read-all', [AdminNotificationController::class, 'markAllRead'])->name('notifications.read-all');
 
+    Route::get('activity-log', [ActivityLogController::class, 'index'])->name('activity-log.index');
+    Route::get('activity-log/{activity}', [ActivityLogController::class, 'show'])->name('activity-log.show');
+    
     });
 
 /*

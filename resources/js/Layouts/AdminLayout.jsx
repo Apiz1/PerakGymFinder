@@ -23,7 +23,7 @@ export default function AdminLayout({ children, title = 'Admin Dashboard' }) {
         { name: 'Users', path: '/admin/users', icon: '👥' },
         { name: 'Locations', path: '/admin/locations', icon: '🗺️' },
         { name: 'Taxonomy', path: '/admin/taxonomy', icon: '🏷️' },
-        { name: 'Activity Log', path: '/admin/logs', icon: '📜' },
+        { name: 'Activity Log', path: '/admin/activity-log', icon: '📜' },
         { name: 'Settings', path: '/admin/settings', icon: '⚙️' },
     ];
 

@@ -6,10 +6,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Spatie\Activitylog\Support\LogOptions;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
 
 class Review extends Model
 {
-    use HasFactory;
+    use HasFactory,LogsActivity;
 
     protected $fillable = [
         'gym_id',
@@ -24,6 +26,25 @@ class Review extends Model
         return [
             'rating' => 'integer',
         ];
+    }
+
+    /*
+    |--------------------------------------------------------------------
+    | Activity log
+    |--------------------------------------------------------------------
+    */
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'gym_id',
+                'user_id',
+                'rating',
+                'status',
+            ])
+            ->logOnlyDirty()
+            ->setDescriptionForEvent(fn (string $eventName) => "Gym was {$eventName}");
     }
 
     public function gym(): BelongsTo

@@ -68,15 +68,19 @@ class GymReportController extends Controller
             'reason' => $validated['reason'],
         ]);
 
-        // Owner-only — unclaimed/scraped gyms (owner_id null) have nobody
-        // to notify.
-        if ($gym->owner_id) {
-            Notification::notifyUser($gym->owner_id, 'new_report', [
-                'report_id' => $report->id,
-                'gym_id' => $gym->id,
-                'gym_name' => $gym->name,
-                'reason' => $validated['reason'],
-            ]);
+            // Owner-only — unclaimed/scraped gyms (owner_id null) have nobody
+            // to notify. Also gated by reason: owners only see wrong_info/other
+            // reports (see OwnerReportController::OWNER_VISIBLE_REASONS) — a
+            // closed/duplicate report is an admin-only moderation concern, so
+            // notifying the owner about one would point them at a report they
+            // can't actually see in their own report list.
+            if ($gym->owner_id && in_array($validated['reason'], ['wrong_info', 'other'], true)) {
+                Notification::notifyUser($gym->owner_id, 'new_report', [
+                    'report_id' => $report->id,
+                    'gym_id' => $gym->id,
+                    'gym_name' => $gym->name,
+                    'reason' => $validated['reason'],
+                ]);
         }
 
         return redirect()
