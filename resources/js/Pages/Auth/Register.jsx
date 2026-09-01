@@ -3,6 +3,7 @@ import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
+import Turnstile from '@/Components/Turnstile';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { useState, useEffect, useMemo } from 'react';
 
@@ -13,6 +14,7 @@ export default function Register() {
         phone: '',
         password: '',
         password_confirmation: '',
+        turnstile_token: '',
     });
 
     const [showPassword, setShowPassword] = useState(false);
@@ -20,6 +22,7 @@ export default function Register() {
     const [backgroundIndex, setBackgroundIndex] = useState(0);
     const [passwordStrength, setPasswordStrength] = useState(0);
     const [passwordStrengthText, setPasswordStrengthText] = useState('');
+    const [turnstileVerified, setTurnstileVerified] = useState(false);
 
     // Random background configurations
     const backgrounds = useMemo(() => [
@@ -65,9 +68,27 @@ export default function Register() {
 
     const submit = (e) => {
         e.preventDefault();
+        
+        // Check if Turnstile is verified
+        if (!turnstileVerified) {
+            alert('Please complete the security verification.');
+            return;
+        }
+        
         post(route('register'), {
             onFinish: () => reset('password', 'password_confirmation'),
         });
+    };
+
+    // Handle Turnstile verification
+    const handleTurnstileVerify = (token) => {
+        if (token) {
+            setData('turnstile_token', token);
+            setTurnstileVerified(true);
+        } else {
+            setData('turnstile_token', '');
+            setTurnstileVerified(false);
+        }
     };
 
     // Password strength checker
@@ -292,7 +313,7 @@ export default function Register() {
                                 <InputError message={errors.email} className="mt-2 text-rose-400 text-xs" />
                             </div>
 
-                            {/* Phone Number Field - NEW */}
+                            {/* Phone Number Field */}
                             <div>
                                 <InputLabel 
                                     htmlFor="phone" 
@@ -438,6 +459,14 @@ export default function Register() {
                                 <InputError message={errors.password_confirmation} className="mt-2 text-rose-400 text-xs" />
                             </div>
 
+                            {/* Turnstile CAPTCHA */}
+                            <div className="flex justify-center">
+                                <Turnstile onVerify={handleTurnstileVerify} />
+                            </div>
+                            {errors.turnstile_token && (
+                                <p className="text-rose-400 text-xs text-center">{errors.turnstile_token}</p>
+                            )}
+
                             {/* Terms and Conditions */}
                             <div className="flex items-start gap-2">
                                 <input
@@ -461,7 +490,7 @@ export default function Register() {
                             {/* Submit Button */}
                             <PrimaryButton 
                                 className="w-full justify-center py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white font-bold rounded-xl shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                                disabled={processing}
+                                disabled={processing || !turnstileVerified}
                             >
                                 {processing ? (
                                     <span className="flex items-center gap-2">

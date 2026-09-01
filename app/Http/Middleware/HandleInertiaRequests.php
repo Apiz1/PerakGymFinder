@@ -34,6 +34,8 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+
+            'turnstileSiteKey' => config('services.turnstile.site_key'),
         ];
     }
 }

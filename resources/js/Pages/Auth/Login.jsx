@@ -4,18 +4,23 @@ import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
+import Turnstile from '@/Components/Turnstile';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 
 export default function Login({ status, canResetPassword }) {
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
         password: '',
         remember: false,
+        turnstile_token: '',
     });
 
     const [showPassword, setShowPassword] = useState(false);
     const [backgroundIndex, setBackgroundIndex] = useState(0);
+    const [turnstileVerified, setTurnstileVerified] = useState(false);
+    const [turnstileError, setTurnstileError] = useState(false);
+    const turnstileRef = useRef(null);
 
     // Random background configurations
     const backgrounds = useMemo(() => [
@@ -59,11 +64,77 @@ export default function Login({ status, canResetPassword }) {
 
     const currentBg = backgrounds[backgroundIndex] || backgrounds[0];
 
+    // Reset Turnstile function
+    const resetTurnstile = () => {
+        setTurnstileVerified(false);
+        setData('turnstile_token', '');
+        setTurnstileError(false);
+        // Reset the Turnstile widget
+        if (window.turnstile && turnstileRef.current) {
+            window.turnstile.reset(turnstileRef.current);
+        }
+    };
+
     const submit = (e) => {
         e.preventDefault();
+        
+        // Check if Turnstile is verified
+        if (!turnstileVerified) {
+            setTurnstileError(true);
+            alert('Please complete the security verification.');
+            return;
+        }
+        
         post(route('login'), {
-            onFinish: () => reset('password'),
+            onError: (errors) => {
+                // Reset Turnstile on any login error
+                resetTurnstile();
+                // Keep the password field error but reset token
+                if (errors.email || errors.password) {
+                    // Don't show turnstile error for wrong credentials
+                    setTurnstileError(false);
+                }
+            },
+            onFinish: () => {
+                reset('password');
+                // Don't reset turnstile on finish if we want to keep it for retry
+                // Actually, we should reset it to allow re-verification
+                // But only if there was an error
+                if (Object.keys(errors).length > 0) {
+                    resetTurnstile();
+                }
+            },
         });
+    };
+
+    // Handle Turnstile verification
+    const handleTurnstileVerify = (token) => {
+        if (token) {
+            setData('turnstile_token', token);
+            setTurnstileVerified(true);
+            setTurnstileError(false);
+        } else {
+            setData('turnstile_token', '');
+            setTurnstileVerified(false);
+            setTurnstileError(true);
+        }
+    };
+
+    // Handle Turnstile error
+    const handleTurnstileError = () => {
+        setTurnstileError(true);
+        setTurnstileVerified(false);
+        setData('turnstile_token', '');
+    };
+
+    // Handle Turnstile expiry
+    const handleTurnstileExpired = () => {
+        setTurnstileVerified(false);
+        setData('turnstile_token', '');
+        // Reset the Turnstile widget
+        if (window.turnstile && turnstileRef.current) {
+            window.turnstile.reset(turnstileRef.current);
+        }
     };
 
     return (
@@ -279,10 +350,28 @@ export default function Login({ status, canResetPassword }) {
                                 </span>
                             </div>
 
+                            {/* Turnstile CAPTCHA */}
+                            <div className="flex justify-center">
+                                <Turnstile 
+                                    ref={turnstileRef}
+                                    onVerify={handleTurnstileVerify}
+                                    onError={handleTurnstileError}
+                                    onExpired={handleTurnstileExpired}
+                                />
+                            </div>
+                            {turnstileError && (
+                                <p className="text-rose-400 text-xs text-center">
+                                    Please complete the security verification.
+                                </p>
+                            )}
+                            {errors.turnstile_token && (
+                                <p className="text-rose-400 text-xs text-center">{errors.turnstile_token}</p>
+                            )}
+
                             {/* Submit Button */}
                             <PrimaryButton 
                                 className="w-full justify-center py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white font-bold rounded-xl shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                                disabled={processing}
+                                disabled={processing || !turnstileVerified}
                             >
                                 {processing ? (
                                     <span className="flex items-center gap-2">
