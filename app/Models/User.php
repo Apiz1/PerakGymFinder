@@ -58,7 +58,7 @@ class User extends Authenticatable
                 'is_active',
             ])
             ->logOnlyDirty()
-            ->setDescriptionForEvent(fn (string $eventName) => "Gym was {$eventName}");
+            ->setDescriptionForEvent(fn (string $eventName) => "User  was {$eventName}");
     }
 
     /*

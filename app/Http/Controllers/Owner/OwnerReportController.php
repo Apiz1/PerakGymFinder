@@ -40,6 +40,8 @@ class OwnerReportController extends Controller
 
     public function show(GymReport $report): Response
     {
+         $this->authorizeOwnership($report);
+
         $report->load(['gym', 'user:id,name,email']);
 
         return Inertia::render('Owner/Gym/ReportShow', [
@@ -71,6 +73,10 @@ class OwnerReportController extends Controller
      */
     private function authorizeOwnership(GymReport $report): void
     {
-        abort_unless($report->gym->owner_id === Auth::id(), 403);
+        abort_unless(
+            $report->gym->owner_id === Auth::id()
+                && in_array($report->reason, self::OWNER_VISIBLE_REASONS, true),
+            403
+        );
     }
 }

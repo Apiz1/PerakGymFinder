@@ -52,12 +52,12 @@ Route::middleware('auth')->group(function () {
 
     // Applying to become a gym owner — open to any logged-in "user", not role-gated
     Route::get('/apply-owner', [GymOwnerApplicationController::class, 'create'])->name('owner-applications.create');
-    Route::post('/apply-owner', [GymOwnerApplicationController::class, 'store'])->name('owner-applications.store');
+    Route::post('/apply-owner', [GymOwnerApplicationController::class, 'store'])->middleware('throttle:10,1')->name('owner-applications.store');
     Route::get('/apply-owner/status', [GymOwnerApplicationController::class, 'status'])->name('owner-applications.status');
 
-    Route::post('/gyms/{gym}/reviews', [ReviewController::class, 'store'])->name('reviews.store');
+    Route::post('/gyms/{gym}/reviews', [ReviewController::class, 'store'])->middleware('throttle:10,1')->name('reviews.store');
     Route::get('/gyms/{gym}/report', [GymReportController::class, 'create'])->name('gyms.report.create');
-    Route::post('/gyms/{gym}/report/store', [GymReportController::class, 'store'])->name('gyms.report');
+    Route::post('/gyms/{gym}/report/store', [GymReportController::class, 'store'])->middleware('throttle:10,1')->name('gyms.report');
 });
 
 /*
