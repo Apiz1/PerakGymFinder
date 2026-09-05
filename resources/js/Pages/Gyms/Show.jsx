@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { Link, router, Head } from '@inertiajs/react';
+import React, { useEffect, useState } from 'react';
+import { Head, Link, router } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
 
+const formatRating = (value) => Number.isFinite(Number(value)) ? Number(value).toFixed(1) : 'N/A';
+
 export default function Show({ gym, formattedHours = [], openStatus = null }) {
-    const [activeTab, setActiveTab] = useState('overview');
     const [selectedImage, setSelectedImage] = useState(0);
     const [showLightbox, setShowLightbox] = useState(false);
     const [showReviewModal, setShowReviewModal] = useState(false);
@@ -12,777 +13,82 @@ export default function Show({ gym, formattedHours = [], openStatus = null }) {
     const [comment, setComment] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [notification, setNotification] = useState(null);
+    const images = gym.images?.map((image) => image.url) || [];
+    const mainImage = images[selectedImage];
+    const hasReviews = Boolean(gym.reviews?.length);
+    const hasReviewed = gym.reviews?.some((review) => review.user_id === window._auth?.user?.id);
+    const reportUrl = (() => { try { return route('gyms.report.create', gym.id); } catch { return `/gyms/${gym.id}/report`; } })();
 
-    // Auto-hide notification
     useEffect(() => {
-        if (notification) {
-            const timer = setTimeout(() => setNotification(null), 5000);
-            return () => clearTimeout(timer);
-        }
+        if (!notification) return undefined;
+        const timer = setTimeout(() => setNotification(null), 5000);
+        return () => clearTimeout(timer);
     }, [notification]);
 
-    // Format rating
-    const formatRating = (rating) => {
-        if (rating === null || rating === undefined) return 'N/A';
-        if (typeof rating === 'number') return rating.toFixed(1);
-        const parsed = parseFloat(rating);
-        return isNaN(parsed) ? 'N/A' : parsed.toFixed(1);
-    };
-
-    // Render stars
-    const renderStars = (rating, size = 'sm') => {
-        const numRating = typeof rating === 'number' ? rating : parseFloat(rating) || 0;
-        const fullStars = Math.floor(numRating);
-        const hasHalfStar = numRating % 1 >= 0.5;
-        const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
-        const stars = [];
-
-        for (let i = 0; i < fullStars; i++) {
-            stars.push('⭐');
-        }
-        if (hasHalfStar) {
-            stars.push('🌟');
-        }
-        for (let i = 0; i < emptyStars; i++) {
-            stars.push('☆');
-        }
-
-        const sizeClass = size === 'lg' ? 'text-2xl' : 'text-sm';
-
-        return (
-            <div className="flex items-center gap-0.5">
-                {stars.map((star, index) => (
-                    <span key={index} className={sizeClass}>
-                        {star}
-                    </span>
-                ))}
-            </div>
-        );
-    };
-
-    const getMainImage = () => {
-        if (gym.images && gym.images.length > 0) {
-            return gym.images[selectedImage]?.url;
-        }
-        return null;
-    };
-
-    const getThumbnails = () => {
-        if (gym.images && gym.images.length > 0) {
-            return gym.images.map(img => img.url);
-        }
-        return [];
-    };
-
-    const mainImage = getMainImage();
-    const thumbnails = getThumbnails();
-
-    // Check if user has already reviewed
-    const hasReviewed = gym.reviews?.some(review => review.user_id === window._auth?.user?.id);
-
-    // Handle review submission
-    const handleSubmitReview = (e) => {
-        e.preventDefault();
-        
-        if (rating === 0) {
-            setNotification({
-                type: 'error',
-                message: 'Please select a rating before submitting.'
-            });
-            return;
-        }
-
+    const submitReview = (event) => {
+        event.preventDefault();
+        if (!rating) { setNotification({ type: 'error', message: 'Please select a rating before submitting.' }); return; }
         setIsSubmitting(true);
-
-        router.post(`/gyms/${gym.id}/reviews`, {
-            rating: rating,
-            comment: comment
-        }, {
-            onSuccess: () => {
-                setIsSubmitting(false);
-                setShowReviewModal(false);
-                setRating(0);
-                setComment('');
-                setNotification({
-                    type: 'success',
-                    message: 'Your review has been posted successfully!'
-                });
-                router.reload();
-            },
-            onError: (errors) => {
-                setIsSubmitting(false);
-                setNotification({
-                    type: 'error',
-                    message: errors.message || 'Failed to submit review. Please try again.'
-                });
-            },
-            onFinish: () => {
-                setIsSubmitting(false);
-            }
+        router.post(`/gyms/${gym.id}/reviews`, { rating, comment }, {
+            onSuccess: () => { setShowReviewModal(false); setRating(0); setComment(''); setNotification({ type: 'success', message: 'Your review has been posted successfully!' }); router.reload(); },
+            onError: (errors) => setNotification({ type: 'error', message: errors.message || 'Failed to submit review. Please try again.' }),
+            onFinish: () => setIsSubmitting(false),
         });
     };
-
-    const closeNotification = () => {
-        setNotification(null);
-    };
-
-    const hasReviews = gym.reviews && gym.reviews.length > 0;
-
-    const getReportUrl = () => {
-    try {
-        return route('gyms.report.create', gym.id);
-    } catch (e) {
-        return `/gyms/${gym.id}/report`;
-    }
-};  
 
     return (
         <MainLayout>
             <Head title={gym.name} />
-            
-            <div className="max-w-7xl mx-auto px-4 py-8">
-                {/* Notification */}
-                {notification && (
-                    <div className={`mb-6 p-4 rounded-xl border flex items-start gap-3 animate-in slide-in-from-top-2 duration-300 ${
-                        notification.type === 'success' 
-                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
-                            : 'bg-red-500/10 border-red-500/20 text-red-400'
-                    }`}>
-                        <span className="text-lg mt-0.5">
-                            {notification.type === 'success' ? '✅' : '❌'}
-                        </span>
-                        <div className="flex-1">
-                            <p className="text-sm font-medium">{notification.message}</p>
+            <div className="bg-[#f7f7f5] pb-14">
+                <div className="mx-auto max-w-7xl px-5 py-7 sm:px-8 sm:py-10">
+                    {notification && <Notification notification={notification} close={() => setNotification(null)} />}
+                    <Link href="/" className="inline-flex items-center gap-2 text-sm font-semibold text-stone-500 transition hover:text-stone-950"><ArrowLeft />Back to search</Link>
+
+                    <section className="mt-6 overflow-hidden rounded-2xl border border-stone-200 bg-white">
+                        <div className="relative h-[280px] bg-stone-200 sm:h-[440px]">
+                            {mainImage ? <><img src={mainImage} alt={gym.name} onClick={() => setShowLightbox(true)} className="h-full w-full cursor-zoom-in object-cover" /><button onClick={() => setShowLightbox(true)} className="absolute bottom-4 right-4 rounded-lg bg-white px-3.5 py-2 text-xs font-semibold text-stone-900 shadow-sm transition hover:bg-stone-100">View photos</button></> : <div className="grid h-full place-items-center text-sm text-stone-500">No photos available</div>}
                         </div>
-                        <button 
-                            onClick={closeNotification}
-                            className="text-white/40 hover:text-white transition-colors"
-                        >
-                            ✕
-                        </button>
-                    </div>
-                )}
+                        {images.length > 1 && <div className="flex gap-2 overflow-x-auto border-t border-stone-200 p-3">{images.map((image, index) => <button key={image} onClick={() => setSelectedImage(index)} className={`h-16 w-20 shrink-0 overflow-hidden rounded-lg border-2 transition ${selectedImage === index ? 'border-stone-950' : 'border-transparent opacity-70 hover:opacity-100'}`}><img src={image} alt={`${gym.name} ${index + 1}`} className="h-full w-full object-cover" /></button>)}</div>}
+                    </section>
 
-                {/* Back Button */}
-                <Link
-                    href="/"
-                    className="inline-flex items-center gap-2 text-sm font-semibold text-white/60 hover:text-white transition-colors mb-6 group"
-                >
-                    <svg className="w-4 h-4 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
-                    Back to Search
-                </Link>
+                    <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,2fr)_320px]">
+                        <div className="min-w-0 space-y-6">
+                            <section className="border-b border-stone-200 pb-7">
+                                <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-stone-400">Gym listing</p><h1 className="mt-2 text-3xl font-bold tracking-[-0.05em] text-stone-950 sm:text-5xl">{gym.name}</h1><p className="mt-3 flex max-w-2xl items-start gap-2 text-sm leading-6 text-stone-500"><PinIcon /><span>{gym.address}{gym.city && `, ${gym.city.name}`}{gym.district && `, ${gym.district.name}`}{gym.state && `, ${gym.state.name}`}</span></p></div><div className="flex shrink-0 items-center gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3"><StarRating value={gym.average_rating} /><div><p className="text-xl font-bold tracking-tight">{formatRating(gym.average_rating)}</p><p className="text-xs text-stone-500">{gym.total_reviews || 0} reviews</p></div></div></div>
+                                <div className="mt-5 flex flex-wrap items-center gap-2">{openStatus?.is_open ? <Badge tone="open"><i className="h-1.5 w-1.5 rounded-full bg-emerald-600" />{openStatus.label}</Badge> : <Badge><i className="h-1.5 w-1.5 rounded-full bg-stone-400" />{openStatus?.label || 'Closed'}</Badge>}{gym.categories?.map((category) => <Badge key={category.id}>{category.name}</Badge>)}</div>
+                            </section>
+                            {gym.description && <Panel title="About"><p className="whitespace-pre-line text-sm leading-7 text-stone-600">{gym.description}</p></Panel>}
+                            {gym.facilities?.length > 0 && <Panel title="Facilities"><div className="flex flex-wrap gap-2">{gym.facilities.map((item) => <span key={item.id} className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-medium text-stone-700">{item.name}</span>)}</div></Panel>}
+                            {formattedHours.length > 0 && <Hours hours={formattedHours} />}
+                            {gym.membership_plans?.length > 0 && <Panel title="Membership plans"><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{gym.membership_plans.map((plan) => <div key={plan.id} className="rounded-xl border border-stone-200 p-4"><p className="text-sm font-semibold">{plan.name}</p><p className="mt-3 text-2xl font-bold tracking-tight">RM {plan.price}</p><p className="mt-1 text-xs capitalize text-stone-500">{plan.billing_cycle === 'one_time' ? 'one-time' : `per ${plan.billing_cycle === 'yearly' ? 'year' : 'month'}`}</p>{plan.description && <p className="mt-3 text-xs leading-5 text-stone-500">{plan.description}</p>}</div>)}</div></Panel>}
+                        </div>
 
-                {/* Image Gallery */}
-                <div className="glass-card rounded-2xl overflow-hidden backdrop-blur-xl bg-white/5 border-white/10 mb-8">
-                    <div className="relative group">
-                        {mainImage ? (
-                            <>
-                                <img
-                                    src={mainImage}
-                                    alt={gym.name}
-                                    className="w-full h-[500px] object-cover cursor-pointer transition-transform duration-700 hover:scale-105"
-                                    onClick={() => setShowLightbox(true)}
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2">
-                                        <button
-                                            onClick={() => setShowLightbox(true)}
-                                            className="bg-white/10 backdrop-blur-md text-white px-6 py-2.5 rounded-xl font-semibold text-sm border border-white/20 hover:bg-white/20 transition"
-                                        >
-                                            🔍 View Full Gallery
-                                        </button>
-                                    </div>
-                                </div>
-                            </>
-                        ) : (
-                            <div className="w-full h-[500px] bg-slate-800 flex items-center justify-center text-8xl text-slate-600">
-                                🏋️‍♂️
-                            </div>
-                        )}
+                        <aside className="space-y-6">
+                            <section className="rounded-2xl border border-stone-200 bg-white p-5 lg:sticky lg:top-24"><h2 className="text-sm font-bold uppercase tracking-[0.12em] text-stone-500">Contact & directions</h2><div className="mt-4 space-y-3 text-sm text-stone-600">{gym.phone_number && <Info label="Phone" value={gym.phone_number} />}{gym.whatsapp_number && <Info label="WhatsApp" value={gym.whatsapp_number} />}{gym.email && <Info label="Email" value={gym.email} />}{gym.website && <div><p className="text-xs font-medium text-stone-400">Website</p><a href={gym.website} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block break-all font-semibold text-stone-900 underline decoration-stone-300 underline-offset-4 hover:decoration-stone-950">Visit website</a></div>}</div><div className="mt-5 space-y-2 border-t border-stone-100 pt-5">{gym.whatsapp_number && <a href={`https://wa.me/${gym.whatsapp_number.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hi ${gym.name}, I found your gym on GymFinder Perak!`)}`} target="_blank" rel="noopener noreferrer" className="block rounded-lg bg-stone-950 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-stone-700">Message on WhatsApp</a>}{gym.google_maps_url && <a href={gym.google_maps_url} target="_blank" rel="noopener noreferrer" className="block rounded-lg border border-stone-300 px-4 py-3 text-center text-sm font-semibold text-stone-700 transition hover:border-stone-950">Get directions</a>}{!hasReviewed ? <button onClick={() => setShowReviewModal(true)} className="w-full rounded-lg border border-stone-300 px-4 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-950">Write a review</button> : <p className="rounded-lg bg-emerald-50 px-3 py-2 text-center text-xs font-medium text-emerald-800">You have reviewed this gym.</p>}</div><Link href={reportUrl} className="mt-5 inline-flex text-xs font-medium text-stone-500 underline underline-offset-4 hover:text-stone-950">Report an issue</Link></section>
+                            {hasReviews && <RecentReviews reviews={gym.reviews} />}
+                        </aside>
                     </div>
 
-                    {/* Thumbnails */}
-                    {thumbnails.length > 1 && (
-                        <div className="p-4 flex gap-3 overflow-x-auto scrollbar-thin scrollbar-thumb-amber-500/20 scrollbar-track-transparent">
-                            {thumbnails.map((thumb, index) => (
-                                <button
-                                    key={index}
-                                    onClick={() => setSelectedImage(index)}
-                                    className={`flex-shrink-0 w-28 h-20 rounded-xl overflow-hidden border-2 transition-all duration-300 ${
-                                        selectedImage === index
-                                            ? 'border-amber-500 shadow-lg shadow-amber-500/20 scale-105'
-                                            : 'border-transparent hover:border-white/30 hover:scale-105'
-                                    }`}
-                                >
-                                    <img
-                                        src={thumb}
-                                        alt={`Gym ${index + 1}`}
-                                        className="w-full h-full object-cover"
-                                    />
-                                </button>
-                            ))}
-                        </div>
-                    )}
+                    {hasReviews && <AllReviews reviews={gym.reviews} canReview={!hasReviewed} onReview={() => setShowReviewModal(true)} />}
+                    {gym.google_maps_url && <section className="mt-8 rounded-2xl border border-stone-200 bg-white p-6"><h2 className="text-lg font-bold tracking-[-0.025em]">Location</h2><p className="mt-2 text-sm text-stone-500">{gym.address}</p><a href={gym.google_maps_url} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex rounded-lg border border-stone-300 px-4 py-2.5 text-sm font-semibold text-stone-700 transition hover:border-stone-950">Open in Google Maps</a></section>}
                 </div>
-
-                {/* Lightbox */}
-                {showLightbox && mainImage && (
-                    <div
-                        className="fixed inset-0 z-[999] bg-black/95 backdrop-blur-lg flex items-center justify-center p-4"
-                        onClick={() => setShowLightbox(false)}
-                    >
-                        <button
-                            onClick={() => setShowLightbox(false)}
-                            className="absolute top-4 right-4 text-white/60 hover:text-white text-3xl transition hover:rotate-90 duration-300"
-                        >
-                            ✕
-                        </button>
-                        <img
-                            src={mainImage}
-                            alt={gym.name}
-                            className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl"
-                        />
-                        {thumbnails.length > 1 && (
-                            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 bg-black/50 backdrop-blur-md p-3 rounded-2xl">
-                                {thumbnails.map((thumb, index) => (
-                                    <button
-                                        key={index}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setSelectedImage(index);
-                                        }}
-                                        className={`w-16 h-10 rounded-lg overflow-hidden border-2 transition-all duration-300 ${
-                                            selectedImage === index
-                                                ? 'border-amber-500 shadow-lg shadow-amber-500/20 scale-110'
-                                                : 'border-white/30 hover:border-white/60 hover:scale-105'
-                                        }`}
-                                    >
-                                        <img
-                                            src={thumb}
-                                            alt={`Gym ${index + 1}`}
-                                            className="w-full h-full object-cover"
-                                        />
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* Gym Info */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Main Content */}
-                    <div className="lg:col-span-2 space-y-6">
-                        {/* Title & Rating */}
-                        <div className="glass-card rounded-2xl p-6 backdrop-blur-xl bg-white/5 border-white/10">
-                            <div className="flex flex-wrap items-start justify-between gap-4">
-                                <div>
-                                    <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
-                                        {gym.name}
-                                    </h1>
-                                    <p className="text-sm text-slate-400 mt-2 flex items-center gap-1.5 flex-wrap">
-                                        <span>📍</span>
-                                        <span>{gym.address}</span>
-                                        {gym.city && <span>• {gym.city.name}</span>}
-                                        {gym.district && <span>, {gym.district.name}</span>}
-                                        {gym.state && <span>, {gym.state.name}</span>}
-                                    </p>
-                                </div>
-                                <div className="flex flex-col items-end gap-1 bg-slate-800/30 p-3 rounded-xl border border-slate-700/30">
-                                    <div className="flex items-center gap-2">
-                                        {renderStars(gym.average_rating, 'lg')}
-                                        <span className="text-2xl font-black text-white">
-                                            {formatRating(gym.average_rating)}
-                                        </span>
-                                    </div>
-                                    <span className="text-xs text-slate-400">
-                                        {gym.total_reviews || 0} reviews
-                                    </span>
-                                </div>
-                            </div>
-
-                            {/* Status & Quick Info - Using openStatus from controller */}
-                            <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-white/10">
-                                {openStatus && openStatus.is_open ? (
-                                    <span className="inline-flex items-center gap-2 text-emerald-400 font-semibold text-sm bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20">
-                                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                                        {openStatus.label}
-                                    </span>
-                                ) : (
-                                    <span className="inline-flex items-center gap-2 text-slate-400 font-semibold text-sm bg-slate-800/30 px-3 py-1.5 rounded-full border border-slate-700/30">
-                                        <span className="w-2 h-2 rounded-full bg-slate-500"></span>
-                                        {openStatus?.label || 'Closed'}
-                                    </span>
-                                )}
-                                {gym.categories && gym.categories.length > 0 && (
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {gym.categories.map((cat) => (
-                                            <span
-                                                key={cat.id}
-                                                className="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-3 py-1 rounded-full"
-                                            >
-                                                {cat.name}
-                                            </span>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Description */}
-                        {gym.description && (
-                            <div className="glass-card rounded-2xl p-6 backdrop-blur-xl bg-white/5 border-white/10">
-                                <div className="flex items-center gap-2 mb-3">
-                                    <span className="text-xl">📝</span>
-                                    <h2 className="text-sm font-bold text-white uppercase tracking-wider text-slate-400">
-                                        About this gym
-                                    </h2>
-                                </div>
-                                <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-line">
-                                    {gym.description}
-                                </p>
-                            </div>
-                        )}
-
-                        {/* Facilities */}
-                        {gym.facilities && gym.facilities.length > 0 && (
-                            <div className="glass-card rounded-2xl p-6 backdrop-blur-xl bg-white/5 border-white/10">
-                                <div className="flex items-center gap-2 mb-3">
-                                    <span className="text-xl">🏋️</span>
-                                    <h2 className="text-sm font-bold text-white uppercase tracking-wider text-slate-400">
-                                        Facilities
-                                    </h2>
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                    {gym.facilities.map((facility) => (
-                                        <span
-                                            key={facility.id}
-                                            className="inline-flex items-center gap-2 bg-slate-800/50 border border-slate-700/50 px-4 py-2 rounded-xl text-sm text-slate-300 hover:border-amber-500/30 transition-all duration-300"
-                                        >
-                                            <span className="text-lg">{facility.icon || '✓'}</span>
-                                            {facility.name}
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Operating Hours - Using formattedHours from controller */}
-                        {formattedHours && formattedHours.length > 0 && (
-                            <div className="glass-card rounded-2xl p-6 backdrop-blur-xl bg-white/5 border-white/10">
-                                <div className="flex items-center gap-2 mb-3">
-                                    <span className="text-xl">🕐</span>
-                                    <h2 className="text-sm font-bold text-white uppercase tracking-wider text-slate-400">
-                                        Operating Hours
-                                    </h2>
-                                </div>
-                                
-                                {/* Current Day Highlight */}
-                                {formattedHours.find(h => h.is_today) && (
-                                    <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <p className="text-xs text-slate-400">Today</p>
-                                                <p className="text-sm font-bold text-white">
-                                                    {formattedHours.find(h => h.is_today)?.day_name}
-                                                </p>
-                                            </div>
-                                            {formattedHours.find(h => h.is_today)?.is_closed ? (
-                                                <span className="text-rose-400 font-bold text-sm">Closed</span>
-                                            ) : (
-                                                <div className="text-right">
-                                                    <span className="text-emerald-400 font-bold text-sm">
-                                                        {formattedHours.find(h => h.is_today)?.open_time} — {formattedHours.find(h => h.is_today)?.close_time}
-                                                    </span>
-                                                    <p className="text-[10px] text-emerald-400">● Open now</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-                                
-                                <div className="space-y-1.5">
-                                    {formattedHours.map((hour, index) => {
-                                        if (hour.is_today) return null; // Skip today as it's shown above
-                                        
-                                        return (
-                                            <div
-                                                key={index}
-                                                className="flex justify-between items-center py-2 px-3 rounded-lg transition-all text-slate-400 hover:bg-white/5"
-                                            >
-                                                <span className="text-sm font-medium">{hour.day_name}</span>
-                                                {hour.is_closed ? (
-                                                    <span className="text-sm text-rose-400 font-semibold">Closed</span>
-                                                ) : (
-                                                    <span className="text-sm font-medium">
-                                                        {hour.open_time} — {hour.close_time}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Membership Plans */}
-                        {gym.membership_plans && gym.membership_plans.length > 0 && (
-                            <div className="glass-card rounded-2xl p-6 backdrop-blur-xl bg-white/5 border-white/10">
-                                <div className="flex items-center gap-2 mb-3">
-                                    <span className="text-xl">💳</span>
-                                    <h2 className="text-sm font-bold text-white uppercase tracking-wider text-slate-400">
-                                        Membership Plans
-                                    </h2>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    {gym.membership_plans.map((plan, index) => {
-                                        const colors = ['from-amber-500/20 to-amber-600/20', 'from-emerald-500/20 to-emerald-600/20', 'from-purple-500/20 to-purple-600/20'];
-                                        return (
-                                            <div
-                                                key={plan.id}
-                                                className={`bg-gradient-to-br ${colors[index % colors.length]} border border-white/10 rounded-xl p-5 text-center hover:scale-105 transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/10`}
-                                            >
-                                                <h3 className="font-bold text-white text-sm">{plan.name}</h3>
-                                                <div className="text-3xl font-black text-amber-400 mt-2">
-                                                    RM {plan.price}
-                                                </div>
-                                                <div className="text-xs text-slate-400 mt-1 capitalize">
-                                                    {plan.billing_cycle === 'monthly' && 'per month'}
-                                                    {plan.billing_cycle === 'yearly' && 'per year'}
-                                                    {plan.billing_cycle === 'one_time' && 'one-time'}
-                                                </div>
-                                                {plan.description && (
-                                                    <p className="text-xs text-slate-400 mt-3 leading-relaxed">
-                                                        {plan.description}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Sidebar */}
-                    <div className="space-y-6">
-                        {/* Contact Card */}
-                        <div className="glass-card rounded-2xl p-6 backdrop-blur-xl bg-white/5 border-white/10 sticky top-24">
-                            <div className="flex items-center gap-2 mb-4">
-                                <span className="text-xl">📞</span>
-                                <h2 className="text-sm font-bold text-white uppercase tracking-wider text-slate-400">
-                                    Contact
-                                </h2>
-                            </div>
-                            <div className="space-y-3 text-sm">
-                                {gym.phone_number && (
-                                    <div className="flex items-center gap-3 text-slate-300 p-2 rounded-lg hover:bg-white/5 transition">
-                                        <span className="text-slate-500 text-lg">📞</span>
-                                        <span>{gym.phone_number}</span>
-                                    </div>
-                                )}
-                                {gym.whatsapp_number && (
-                                    <div className="flex items-center gap-3 text-slate-300 p-2 rounded-lg hover:bg-white/5 transition">
-                                        <span className="text-slate-500 text-lg">💬</span>
-                                        <span>{gym.whatsapp_number}</span>
-                                    </div>
-                                )}
-                                {gym.email && (
-                                    <div className="flex items-center gap-3 text-slate-300 p-2 rounded-lg hover:bg-white/5 transition">
-                                        <span className="text-slate-500 text-lg">✉️</span>
-                                        <span>{gym.email}</span>
-                                    </div>
-                                )}
-                                {gym.website && (
-                                    <div className="flex items-center gap-3 text-slate-300 p-2 rounded-lg hover:bg-white/5 transition">
-                                        <span className="text-slate-500 text-lg">🌐</span>
-                                        <a
-                                            href={gym.website}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-amber-400 hover:text-amber-300 transition font-medium"
-                                        >
-                                            Visit Website →
-                                        </a>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Action Buttons */}
-                            <div className="mt-4 pt-4 border-t border-white/10 space-y-2">
-                                {gym.whatsapp_number && (
-                                    <a
-                                        href={`https://wa.me/${gym.whatsapp_number.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hi ${gym.name}, I found your gym on GymFinder Perak!`)}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-white font-bold py-3 rounded-xl transition-all duration-300 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:scale-105"
-                                    >
-                                        💬 WhatsApp
-                                    </a>
-                                )}
-                                {gym.google_maps_url && (
-                                    <a
-                                        href={gym.google_maps_url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl transition-all duration-300 shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 hover:scale-105"
-                                    >
-                                        🗺️ Get Directions
-                                    </a>
-                                )}
-                                {!hasReviewed && (
-                                    <button
-                                        onClick={() => setShowReviewModal(true)}
-                                        className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 text-white font-bold py-3 rounded-xl transition-all duration-300 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/40 hover:scale-105"
-                                    >
-                                        ⭐ Write a Review
-                                    </button>
-                                )}
-                                {hasReviewed && (
-                                    <div className="w-full text-center text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 py-2 rounded-xl">
-                                        ✅ You've already reviewed this gym
-                                    </div>
-                                )}
-                            </div>
-
-                              {/* Report Link - Updated to navigate to report page */}
-                            <div className="mt-4 pt-4 border-t border-white/10">
-                                <Link
-                                    href={getReportUrl()}
-                                    className="text-xs text-amber-400/80 hover:text-amber-400 transition flex items-center gap-1.5 group w-full"
-                                >
-                                    <span className="group-hover:scale-110 transition-transform">⚠️</span>
-                                    Report an issue
-                                    <span className="group-hover:translate-x-1 transition-transform">→</span>
-                                </Link>
-                            </div>
-                        </div>
-
-                        {/* Reviews Summary */}
-                        {hasReviews && (
-                            <div className="glass-card rounded-2xl p-6 backdrop-blur-xl bg-white/5 border-white/10">
-                                <div className="flex items-center justify-between mb-3">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xl">⭐</span>
-                                        <h2 className="text-sm font-bold text-white uppercase tracking-wider text-slate-400">
-                                            Recent Reviews
-                                        </h2>
-                                    </div>
-                                    <span className="text-xs text-slate-500">{gym.reviews.length} total</span>
-                                </div>
-                                <div className="space-y-3">
-                                    {gym.reviews.slice(0, 3).map((review) => (
-                                        <div key={review.id} className="bg-slate-800/30 rounded-xl p-3 border border-slate-700/30 hover:border-slate-600/50 transition">
-                                            <div className="flex items-center justify-between">
-                                                <span className="font-semibold text-white text-sm">
-                                                    {review.user?.name || 'Anonymous'}
-                                                </span>
-                                                <div className="flex items-center gap-1">
-                                                    {renderStars(review.rating)}
-                                                </div>
-                                            </div>
-                                            <p className="text-xs text-slate-400 mt-1 line-clamp-2">
-                                                {review.comment || 'No comment provided.'}
-                                            </p>
-                                            {review.reply && (
-                                                <div className="mt-2 pl-3 border-l-2 border-amber-500/30 bg-amber-500/5 rounded-r-lg p-2">
-                                                    <p className="text-[10px] text-amber-400 font-medium">💬 Owner Reply:</p>
-                                                    <p className="text-xs text-slate-400">{review.reply.reply}</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* All Reviews Section */}
-                {hasReviews && (
-                    <div className="mt-8 glass-card rounded-2xl p-6 backdrop-blur-xl bg-white/5 border-white/10">
-                        <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-                            <div className="flex items-center gap-2">
-                                <span className="text-xl">⭐</span>
-                                <h2 className="text-sm font-bold text-white uppercase tracking-wider text-slate-400">
-                                    All Reviews ({gym.reviews.length})
-                                </h2>
-                            </div>
-                            {!hasReviewed && (
-                                <button 
-                                    onClick={() => setShowReviewModal(true)}
-                                    className="text-xs bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 font-bold px-4 py-2 rounded-xl transition-all duration-300 border border-amber-500/20 hover:border-amber-500"
-                                >
-                                    ✏️ Write a Review
-                                </button>
-                            )}
-                        </div>
-                        <div className="space-y-4">
-                            {gym.reviews.map((review) => (
-                                <div key={review.id} className="bg-slate-800/30 rounded-xl p-4 border border-slate-700/30 hover:border-slate-600/50 transition-all duration-300">
-                                    <div className="flex flex-wrap items-start justify-between gap-2">
-                                        <div>
-                                            <span className="font-semibold text-white text-sm">
-                                                {review.user?.name || 'Anonymous'}
-                                            </span>
-                                            <div className="flex items-center gap-1 mt-1">
-                                                {renderStars(review.rating)}
-                                            </div>
-                                        </div>
-                                        <span className="text-[10px] text-slate-500 bg-slate-900/50 px-2 py-0.5 rounded-full">
-                                            {new Date(review.created_at).toLocaleDateString()}
-                                        </span>
-                                    </div>
-                                    <p className="text-sm text-slate-300 mt-2 leading-relaxed">
-                                        {review.comment || 'No comment provided.'}
-                                    </p>
-                                    {review.reply && (
-                                        <div className="mt-3 pl-4 border-l-2 border-amber-500/30 bg-amber-500/5 rounded-r-xl p-3">
-                                            <p className="text-xs text-amber-400 font-medium flex items-center gap-1">
-                                                <span>💬</span> Owner Response:
-                                            </p>
-                                            <p className="text-sm text-slate-300 mt-1">{review.reply.reply}</p>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* Map Section */}
-                {gym.google_maps_url && (
-                    <div className="mt-8 glass-card rounded-2xl p-6 backdrop-blur-xl bg-white/5 border-white/10">
-                        <div className="flex items-center gap-2 mb-3">
-                            <span className="text-xl">🗺️</span>
-                            <h2 className="text-sm font-bold text-white uppercase tracking-wider text-slate-400">
-                                Location
-                            </h2>
-                        </div>
-                        <div className="bg-slate-800/50 rounded-xl p-6 text-center border border-slate-700/30 hover:border-amber-500/20 transition-all duration-300">
-                            <a
-                                href={gym.google_maps_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 text-amber-400 hover:text-amber-300 transition text-sm font-semibold"
-                            >
-                                <span className="text-xl">📍</span>
-                                View on Google Maps →
-                            </a>
-                            <p className="text-xs text-slate-500 mt-2">{gym.address}</p>
-                        </div>
-                    </div>
-                )}
             </div>
-
-            {/* Review Modal */}
-            {showReviewModal && (
-                <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
-                    {/* Backdrop */}
-                    <div 
-                        className="absolute inset-0 bg-black/70 backdrop-blur-md"
-                        onClick={() => setShowReviewModal(false)}
-                    ></div>
-                    
-                    {/* Modal */}
-                    <div className="relative max-w-md w-full bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl p-6 animate-in fade-in zoom-in duration-200">
-                        {/* Header */}
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                                <span className="text-2xl">✏️</span>
-                                Write a Review
-                            </h3>
-                            <button
-                                onClick={() => setShowReviewModal(false)}
-                                className="text-slate-400 hover:text-white transition-colors hover:rotate-90 duration-300"
-                            >
-                                ✕
-                            </button>
-                        </div>
-
-                        {/* Gym Name */}
-                        <div className="mb-4 p-3 bg-slate-800/30 rounded-xl border border-slate-700/50">
-                            <p className="text-xs text-slate-400">Reviewing:</p>
-                            <p className="text-sm font-semibold text-white flex items-center gap-2">
-                                <span>🏋️</span> {gym.name}
-                            </p>
-                        </div>
-
-                        {/* Form */}
-                        <form onSubmit={handleSubmitReview} className="space-y-4">
-                            {/* Rating */}
-                            <div>
-                                <label className="block text-sm font-semibold text-white mb-2">
-                                    Rating <span className="text-red-400">*</span>
-                                </label>
-                                <div className="flex items-center gap-1">
-                                    {[1, 2, 3, 4, 5].map((star) => (
-                                        <button
-                                            key={star}
-                                            type="button"
-                                            onClick={() => setRating(star)}
-                                            onMouseEnter={() => setHoverRating(star)}
-                                            onMouseLeave={() => setHoverRating(0)}
-                                            className="text-3xl transition-all duration-200 hover:scale-125 focus:outline-none"
-                                        >
-                                            <span className={star <= (hoverRating || rating) ? 'text-amber-400' : 'text-slate-600'}>
-                                                ★
-                                            </span>
-                                        </button>
-                                    ))}
-                                    <span className="ml-3 text-sm font-semibold text-slate-400">
-                                        {rating > 0 ? `${rating} / 5` : 'Select rating'}
-                                    </span>
-                                </div>
-                            </div>
-
-                            {/* Comment */}
-                            <div>
-                                <label className="block text-sm font-semibold text-white mb-2">
-                                    Comment
-                                </label>
-                                <textarea
-                                    value={comment}
-                                    onChange={(e) => setComment(e.target.value)}
-                                    rows="4"
-                                    className="w-full px-4 py-2.5 bg-slate-900/80 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all resize-none"
-                                    placeholder="Share your experience at this gym..."
-                                />
-                            </div>
-
-                            {/* Buttons */}
-                            <div className="flex gap-3 pt-4 border-t border-white/10">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowReviewModal(false)}
-                                    className="flex-1 px-4 py-2.5 rounded-xl border border-white/10 text-white/70 hover:text-white hover:bg-white/5 transition-all duration-200 font-medium text-sm"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={isSubmitting || rating === 0}
-                                    className="flex-1 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-sm shadow-lg shadow-amber-500/20 transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {isSubmitting ? (
-                                        <span className="flex items-center justify-center gap-2">
-                                            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                            </svg>
-                                            Submitting...
-                                        </span>
-                                    ) : (
-                                        'Submit Review'
-                                    )}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+            {showLightbox && mainImage && <Lightbox image={mainImage} name={gym.name} images={images} selected={selectedImage} select={setSelectedImage} close={() => setShowLightbox(false)} />}
+            {showReviewModal && <ReviewModal gymName={gym.name} rating={rating} hoverRating={hoverRating} setRating={setRating} setHoverRating={setHoverRating} comment={comment} setComment={setComment} submit={submitReview} submitting={isSubmitting} close={() => setShowReviewModal(false)} />}
         </MainLayout>
     );
 }
+
+function Panel({ title, children }) { return <section className="rounded-2xl border border-stone-200 bg-white p-6"><h2 className="text-lg font-bold tracking-[-0.025em] text-stone-950">{title}</h2><div className="mt-4">{children}</div></section>; }
+function Badge({ children, tone = 'default' }) { return <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold ${tone === 'open' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-stone-200 bg-white text-stone-600'}`}>{children}</span>; }
+function Info({ label, value }) { return <div><p className="text-xs font-medium text-stone-400">{label}</p><p className="mt-1 break-words">{value}</p></div>; }
+function StarRating({ value, small = false }) { const stars = Math.round(Number(value) || 0); return <div className="flex text-amber-500" aria-label={`${formatRating(value)} out of 5`}>{[1, 2, 3, 4, 5].map((star) => <svg key={star} className={small ? 'h-3.5 w-3.5' : 'h-4 w-4'} viewBox="0 0 20 20" fill={star <= stars ? 'currentColor' : 'none'} stroke="currentColor"><path d="m10 2.6 2.2 4.5 5 .7-3.6 3.5.9 5-4.5-2.4-4.5 2.4.9-5L2.8 7.8l5-.7L10 2.6Z" strokeWidth="1.3" strokeLinejoin="round" /></svg>)}</div>; }
+function Hours({ hours }) { const today = hours.find((hour) => hour.is_today); return <Panel title="Operating hours">{today && <div className="mb-4 flex items-center justify-between rounded-xl bg-stone-100 px-4 py-3"><div><p className="text-xs font-medium text-stone-500">Today · {today.day_name}</p><p className="mt-1 text-sm font-bold">{today.is_closed ? 'Closed' : `${today.open_time} – ${today.close_time}`}</p></div>{!today.is_closed && <span className="text-xs font-semibold text-emerald-700">Open now</span>}</div>}<div className="divide-y divide-stone-100">{hours.filter((hour) => !hour.is_today).map((hour, index) => <div key={index} className="flex justify-between gap-4 py-2.5 text-sm"><span className="font-medium text-stone-700">{hour.day_name}</span><span className={hour.is_closed ? 'font-medium text-red-700' : 'text-stone-500'}>{hour.is_closed ? 'Closed' : `${hour.open_time} – ${hour.close_time}`}</span></div>)}</div></Panel>; }
+function Review({ review, compact = false }) { return <article className={compact ? 'border-b border-stone-100 pb-4 last:border-0 last:pb-0' : 'rounded-xl border border-stone-200 p-4'}><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold">{review.user?.name || 'Anonymous'}</p><div className="mt-1"><StarRating value={review.rating} small /></div></div>{!compact && <time className="text-xs text-stone-400">{new Date(review.created_at).toLocaleDateString()}</time>}</div><p className="mt-3 text-sm leading-6 text-stone-600">{review.comment || 'No comment provided.'}</p>{review.reply && <div className="mt-3 border-l-2 border-stone-300 pl-3"><p className="text-xs font-semibold text-stone-500">Owner response</p><p className="mt-1 text-sm text-stone-600">{review.reply.reply}</p></div>}</article>; }
+function RecentReviews({ reviews }) { return <section className="rounded-2xl border border-stone-200 bg-white p-5"><div className="flex items-center justify-between"><h2 className="text-sm font-bold uppercase tracking-[0.12em] text-stone-500">Recent reviews</h2><span className="text-xs text-stone-400">{reviews.length} total</span></div><div className="mt-4 space-y-4">{reviews.slice(0, 3).map((review) => <Review key={review.id} review={review} compact />)}</div></section>; }
+function AllReviews({ reviews, canReview, onReview }) { return <section className="mt-8 rounded-2xl border border-stone-200 bg-white p-6"><div className="flex flex-wrap items-center justify-between gap-4"><div><h2 className="text-xl font-bold tracking-[-0.025em]">All reviews</h2><p className="mt-1 text-sm text-stone-500">{reviews.length} member review{reviews.length === 1 ? '' : 's'}</p></div>{canReview && <button onClick={onReview} className="rounded-lg bg-stone-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-stone-700">Write a review</button>}</div><div className="mt-5 space-y-3">{reviews.map((review) => <Review key={review.id} review={review} />)}</div></section>; }
+function Notification({ notification, close }) { return <div className={`mb-6 flex items-start justify-between gap-4 rounded-xl border px-4 py-3 text-sm font-medium ${notification.type === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-red-200 bg-red-50 text-red-800'}`}><p>{notification.message}</p><button onClick={close} className="text-current opacity-50 hover:opacity-100" aria-label="Dismiss notification">×</button></div>; }
+function Lightbox({ image, name, images, selected, select, close }) { return <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/95 p-5" onClick={close}><button onClick={close} className="absolute right-5 top-5 rounded-full bg-white/10 px-3 py-1.5 text-sm font-semibold text-white">Close</button><img src={image} alt={name} className="max-h-[82vh] max-w-full rounded-xl object-contain" onClick={(event) => event.stopPropagation()} />{images.length > 1 && <div className="absolute bottom-5 flex max-w-[90vw] gap-2 overflow-auto rounded-xl bg-white/10 p-2" onClick={(event) => event.stopPropagation()}>{images.map((item, index) => <button key={item} onClick={() => select(index)} className={`h-12 w-16 shrink-0 overflow-hidden rounded border-2 ${selected === index ? 'border-white' : 'border-transparent opacity-60'}`}><img src={item} alt={`Image ${index + 1}`} className="h-full w-full object-cover" /></button>)}</div>}</div>; }
+function ReviewModal({ gymName, rating, hoverRating, setRating, setHoverRating, comment, setComment, submit, submitting, close }) { return <div className="fixed inset-0 z-50 grid place-items-center p-5"><button className="absolute inset-0 bg-stone-950/40 backdrop-blur-sm" onClick={close} aria-label="Close review form" /><div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[.14em] text-stone-400">Share your experience</p><h2 className="mt-1 text-xl font-bold">Review {gymName}</h2></div><button onClick={close} className="text-stone-400 hover:text-stone-950">×</button></div><form onSubmit={submit} className="mt-6 space-y-5"><div><label className="text-sm font-semibold">Your rating</label><div className="mt-2 flex items-center gap-1">{[1, 2, 3, 4, 5].map((star) => <button key={star} type="button" onClick={() => setRating(star)} onMouseEnter={() => setHoverRating(star)} onMouseLeave={() => setHoverRating(0)} className={`text-3xl leading-none ${star <= (hoverRating || rating) ? 'text-amber-500' : 'text-stone-200'}`}>★</button>)}<span className="ml-2 text-sm text-stone-500">{rating ? `${rating}/5` : 'Select'}</span></div></div><div><label htmlFor="comment" className="text-sm font-semibold">Comment</label><textarea id="comment" value={comment} onChange={(event) => setComment(event.target.value)} rows="4" className="mt-2 w-full resize-none rounded-xl border-stone-300 text-sm text-stone-800 focus:border-stone-950 focus:ring-stone-950" placeholder="Share your experience at this gym..." /></div><div className="flex gap-3 border-t border-stone-100 pt-5"><button type="button" onClick={close} className="flex-1 rounded-lg border border-stone-300 px-4 py-2.5 text-sm font-semibold">Cancel</button><button type="submit" disabled={submitting || !rating} className="flex-1 rounded-lg bg-stone-950 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{submitting ? 'Submitting…' : 'Submit review'}</button></div></form></div></div>; }
+function ArrowLeft() { return <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m11 5-7 7 7 7m-7-7h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
+function PinIcon() { return <svg className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11s-8-6-8-11a8 8 0 1 1 16 0Z" stroke="currentColor" strokeWidth="1.7" /><circle cx="12" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.7" /></svg>; }

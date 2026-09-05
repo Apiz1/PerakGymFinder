@@ -1,17 +1,24 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { debounce } from 'lodash';
 import MainLayout from '@/Layouts/MainLayout';
 
-export default function Home({ 
-    gyms = {}, 
-    filters = {}, 
-    states = [], 
-    districts = [], 
-    cities = [], 
-    categories = [], 
-    facilities = [] 
-}) {
+const gymImageUrls = [
+    'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&h=600&fit=crop',
+    'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=800&h=600&fit=crop',
+    'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&h=600&fit=crop',
+    'https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?w=800&h=600&fit=crop',
+    'https://images.unsplash.com/photo-1534258936925-c58bed479fcb?w=800&h=600&fit=crop',
+    'https://images.unsplash.com/photo-1581009146145-b5b0502edc41?w=800&h=600&fit=crop',
+];
+
+const Select = ({ children, ...props }) => (
+    <select {...props} className="min-w-[145px] appearance-none rounded-lg border border-stone-300 bg-white px-3 py-2 pr-8 text-xs font-medium text-stone-700 outline-none transition focus:border-stone-950 focus:ring-2 focus:ring-stone-200">
+        {children}
+    </select>
+);
+
+export default function Home({ gyms = {}, filters = {}, states = [], districts = [], cities = [], categories = [], facilities = [] }) {
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
     const [selectedCategory, setSelectedCategory] = useState(filters.category_ids?.[0] || '');
     const [selectedState, setSelectedState] = useState(filters.state_id || '');
@@ -22,997 +29,118 @@ export default function Home({
     const [viewMode, setViewMode] = useState('grid');
     const [sortBy, setSortBy] = useState(filters.sort || 'rating');
     const [showMoreFilters, setShowMoreFilters] = useState(false);
-    const [backgroundIndex, setBackgroundIndex] = useState(0);
     const [gymImages, setGymImages] = useState({});
 
-    // Random background configurations
-    const backgrounds = useMemo(() => [
-        {
-            gradient: 'from-blue-900 via-purple-900 to-pink-900',
-            pattern: 'dots',
-            accent: 'from-blue-400 via-purple-500 to-pink-500',
-            glowColor: 'rgba(139, 92, 246, 0.15)'
-        },
-        {
-            gradient: 'from-emerald-900 via-teal-900 to-cyan-900',
-            pattern: 'grid',
-            accent: 'from-emerald-400 via-teal-500 to-cyan-500',
-            glowColor: 'rgba(16, 185, 129, 0.15)'
-        },
-        {
-            gradient: 'from-amber-900 via-orange-900 to-red-900',
-            pattern: 'circles',
-            accent: 'from-amber-400 via-orange-500 to-red-500',
-            glowColor: 'rgba(245, 158, 11, 0.15)'
-        },
-        {
-            gradient: 'from-indigo-900 via-blue-900 to-cyan-900',
-            pattern: 'waves',
-            accent: 'from-indigo-400 via-blue-500 to-cyan-500',
-            glowColor: 'rgba(99, 102, 241, 0.15)'
-        },
-        {
-            gradient: 'from-rose-900 via-pink-900 to-fuchsia-900',
-            pattern: 'squares',
-            accent: 'from-rose-400 via-pink-500 to-fuchsia-500',
-            glowColor: 'rgba(244, 63, 94, 0.15)'
-        },
-        {
-            gradient: 'from-violet-900 via-purple-900 to-indigo-900',
-            pattern: 'triangles',
-            accent: 'from-violet-400 via-purple-500 to-indigo-500',
-            glowColor: 'rgba(139, 92, 246, 0.15)'
-        }
-    ], []);
-
-    // Unsplash Gym Images Collection
-    const gymImageUrls = useMemo(() => [
-        'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&h=600&fit=crop',
-        'https://images.unsplash.com/photo-1540497077202-7c8a3999166f?w=800&h=600&fit=crop',
-        'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&h=600&fit=crop',
-        'https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?w=800&h=600&fit=crop',
-        'https://images.unsplash.com/photo-1534258936925-c58bed479fcb?w=800&h=600&fit=crop',
-        'https://images.unsplash.com/photo-1581009146145-b5b0502edc41?w=800&h=600&fit=crop',
-        'https://images.unsplash.com/photo-1518314916381-77a37c2a49ae?w=800&h=600&fit=crop',
-        'https://images.unsplash.com/photo-1570829460005-c840387bb1ca?w=800&h=600&fit=crop',
-        'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&h=600&fit=crop',
-        'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=800&h=600&fit=crop',
-        'https://images.unsplash.com/photo-1552074284-5e88ef1aef18?w=800&h=600&fit=crop',
-    ], []);
-
-    // Helper function to safely format rating
-    const formatRating = (rating) => {
-        if (rating === null || rating === undefined) return 'N/A';
-        if (typeof rating === 'number') return rating.toFixed(1);
-        const parsed = parseFloat(rating);
-        return isNaN(parsed) ? 'N/A' : parsed.toFixed(1);
-    };
-
-    // Helper function to safely get numeric rating
-    const getNumericRating = (rating) => {
-        if (typeof rating === 'number') return rating;
-        const parsed = parseFloat(rating);
-        return isNaN(parsed) ? 0 : parsed;
-    };
-
-    // Get random image for a gym
-    const getGymImage = (gymId) => {
-        if (gymImages[gymId]) return gymImages[gymId];
-        const index = gymId % gymImageUrls.length;
-        const imageUrl = gymImageUrls[index];
-        setGymImages(prev => ({ ...prev, [gymId]: imageUrl }));
-        return imageUrl;
-    };
-
-    // Select random background on mount
-    useEffect(() => {
-        const randomIndex = Math.floor(Math.random() * backgrounds.length);
-        setBackgroundIndex(randomIndex);
-    }, []);
-
-    const currentBg = backgrounds[backgroundIndex] || backgrounds[0];
-
-    // Filter districts based on selected state
-    const filteredDistricts = useMemo(() => {
-        if (!selectedState) return districts;
-        return districts.filter(d => d.state_id === parseInt(selectedState));
-    }, [selectedState, districts]);
-
-    // Filter cities based on selected district
-    const filteredCities = useMemo(() => {
-        if (!selectedDistrict) return cities;
-        return cities.filter(c => c.district_id === parseInt(selectedDistrict));
-    }, [selectedDistrict, cities]);
-
-    // Debounced search for better UX
-    const debouncedSearch = useCallback(
-        debounce((term, category, state, district, city, facilities, sort) => {
-            router.get(
-                '/',
-                { 
-                    search: term, 
-                    category_ids: category ? [category] : [],
-                    state_id: state,
-                    district_id: district,
-                    city_id: city,
-                    facility_ids: facilities,
-                    sort: sort
-                },
-                { preserveState: true, replace: true }
-            );
-        }, 300),
-        []
-    );
-
-    // Handle Search Submission with loading state
-    const handleSearch = (e) => {
-        e?.preventDefault();
-        setIsLoading(true);
-        router.get(
-            '/',
-            { 
-                search: searchTerm, 
-                category_ids: selectedCategory ? [selectedCategory] : [],
-                state_id: selectedState,
-                district_id: selectedDistrict,
-                city_id: selectedCity,
-                facility_ids: selectedFacilities,
-                sort: sortBy
-            },
-            { 
-                preserveState: true, 
-                replace: true,
-                onFinish: () => setIsLoading(false)
-            }
-        );
-    };
-
-    // Handle category filter
-    const handleCategoryFilter = (categoryId) => {
-        setSelectedCategory(categoryId);
-        setIsLoading(true);
-        router.get(
-            '/',
-            { 
-                search: searchTerm, 
-                category_ids: categoryId ? [categoryId] : [],
-                state_id: selectedState,
-                district_id: selectedDistrict,
-                city_id: selectedCity,
-                facility_ids: selectedFacilities,
-                sort: sortBy
-            },
-            { 
-                preserveState: true,
-                onFinish: () => setIsLoading(false)
-            }
-        );
-    };
-
-    // Handle state change - reset district and city
-    const handleStateChange = (stateId) => {
-        setSelectedState(stateId);
-        setSelectedDistrict('');
-        setSelectedCity('');
-        handleSearch(new Event('submit'));
-    };
-
-    // Handle district change - reset city
-    const handleDistrictChange = (districtId) => {
-        setSelectedDistrict(districtId);
-        setSelectedCity('');
-        handleSearch(new Event('submit'));
-    };
-
-    // Handle city change
-    const handleCityChange = (cityId) => {
-        setSelectedCity(cityId);
-        handleSearch(new Event('submit'));
-    };
-
-    // Toggle facility selection
-    const toggleFacility = (facilityId) => {
-        setSelectedFacilities(prev => 
-            prev.includes(facilityId)
-                ? prev.filter(id => id !== facilityId)
-                : [...prev, facilityId]
-        );
-    };
-
-    // Handle sort change
-    const handleSortChange = (sort) => {
-        setSortBy(sort);
-        setIsLoading(true);
-        router.get(
-            '/',
-            { 
-                search: searchTerm, 
-                category_ids: selectedCategory ? [selectedCategory] : [],
-                state_id: selectedState,
-                district_id: selectedDistrict,
-                city_id: selectedCity,
-                facility_ids: selectedFacilities,
-                sort: sort
-            },
-            { 
-                preserveState: true,
-                onFinish: () => setIsLoading(false)
-            }
-        );
-    };
-
-    // Clear all filters
-    const clearFilters = () => {
-        setSelectedCategory('');
-        setSelectedState('');
-        setSelectedDistrict('');
-        setSelectedCity('');
-        setSelectedFacilities([]);
-        setSearchTerm('');
-        setSortBy('rating');
-        router.get(
-            '/',
-            { sort: 'rating' },
-            { preserveState: true, replace: true }
-        );
-    };
-
-    // Extract Paginated Gym Items
+    const filteredDistricts = useMemo(() => !selectedState ? districts : districts.filter((d) => d.state_id === parseInt(selectedState)), [selectedState, districts]);
+    const filteredCities = useMemo(() => !selectedDistrict ? cities : cities.filter((c) => c.district_id === parseInt(selectedDistrict)), [selectedDistrict, cities]);
     const gymList = gyms.data || [];
-
-    // Quick stats calculation - FIXED
     const totalGyms = gyms.total || gymList.length;
-
-    // Safely calculate average rating
-    const avgRating = gymList.length > 0 
-        ? gymList.reduce((acc, gym) => {
-            const rating = getNumericRating(gym.average_rating);
-            return acc + rating;
-        }, 0) / gymList.length
-        : 0;
-
-    // Safely find top rated gym
-    const topRatedGym = gymList.length > 0 ? gymList.reduce((a, b) => {
-        const ratingA = getNumericRating(a.average_rating);
-        const ratingB = getNumericRating(b.average_rating);
-        return ratingA > ratingB ? a : b;
-    }) : null;
-
-    // Function to refresh background
-    const refreshBackground = () => {
-        const newIndex = (backgroundIndex + 1) % backgrounds.length;
-        setBackgroundIndex(newIndex);
-    };
-
-    // Check if any filters are active
+    const numericRating = (rating) => Number.isFinite(Number(rating)) ? Number(rating) : 0;
+    const formatRating = (rating) => Number.isFinite(Number(rating)) ? Number(rating).toFixed(1) : 'N/A';
+    const avgRating = gymList.length ? gymList.reduce((sum, gym) => sum + numericRating(gym.average_rating), 0) / gymList.length : 0;
+    const topRatedGym = gymList.length ? gymList.reduce((best, gym) => numericRating(best.average_rating) > numericRating(gym.average_rating) ? best : gym) : null;
     const hasActiveFilters = selectedCategory || selectedState || selectedDistrict || selectedCity || selectedFacilities.length > 0 || searchTerm;
 
-    // Helper to get gym show URL
-    const getGymShowUrl = (gym) => {
-        // Use the slug if available, otherwise use id
-        if (gym.slug) {
-            return `/gyms/${gym.slug}`;
-        }
-        return `/gyms/${gym.id}`;
+    const request = (values, options = {}) => router.get('/', values, { preserveState: true, replace: true, onFinish: () => setIsLoading(false), ...options });
+    const currentQuery = (overrides = {}) => ({
+        search: searchTerm, category_ids: selectedCategory ? [selectedCategory] : [], state_id: selectedState,
+        district_id: selectedDistrict, city_id: selectedCity, facility_ids: selectedFacilities, sort: sortBy, ...overrides,
+    });
+    const debouncedSearch = useCallback(debounce((term, category, state, district, city, selected, sort) => {
+        router.get('/', { search: term, category_ids: category ? [category] : [], state_id: state, district_id: district, city_id: city, facility_ids: selected, sort }, { preserveState: true, replace: true });
+    }, 300), []);
+    useEffect(() => () => debouncedSearch.cancel(), [debouncedSearch]);
+
+    const handleSearch = (event) => { event?.preventDefault(); setIsLoading(true); request(currentQuery()); };
+    const handleCategoryFilter = (id) => { setSelectedCategory(id); setIsLoading(true); request(currentQuery({ category_ids: id ? [id] : [] })); };
+    const handleStateChange = (id) => { setSelectedState(id); setSelectedDistrict(''); setSelectedCity(''); setIsLoading(true); request(currentQuery({ state_id: id, district_id: '', city_id: '' })); };
+    const handleDistrictChange = (id) => { setSelectedDistrict(id); setSelectedCity(''); setIsLoading(true); request(currentQuery({ district_id: id, city_id: '' })); };
+    const handleCityChange = (id) => { setSelectedCity(id); setIsLoading(true); request(currentQuery({ city_id: id })); };
+    const handleSortChange = (sort) => { setSortBy(sort); setIsLoading(true); request(currentQuery({ sort })); };
+    const toggleFacility = (id) => setSelectedFacilities((previous) => previous.includes(id) ? previous.filter((item) => item !== id) : [...previous, id]);
+    const clearFilters = () => { setSelectedCategory(''); setSelectedState(''); setSelectedDistrict(''); setSelectedCity(''); setSelectedFacilities([]); setSearchTerm(''); setSortBy('rating'); router.get('/', { sort: 'rating' }, { preserveState: true, replace: true }); };
+    const getGymImage = (id) => {
+        if (gymImages[id]) return gymImages[id];
+        const image = gymImageUrls[id % gymImageUrls.length];
+        setGymImages((previous) => ({ ...previous, [id]: image }));
+        return image;
     };
+    const chooseSearch = (term) => { setSearchTerm(term); setIsLoading(true); request(currentQuery({ search: term })); };
+    const showUrl = (gym) => `/gyms/${gym.slug || gym.id}`;
+    const optionLabel = (items, id) => items.find((item) => item.id == id)?.name;
 
     return (
         <MainLayout>
-            <div className="relative min-h-screen overflow-hidden">
-                {/* Dynamic Background Gradient */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${currentBg.gradient} opacity-90`}></div>
-                
-                {/* Background Pattern Overlay */}
-                <div className="absolute inset-0 opacity-10">
-                    {currentBg.pattern === 'dots' && (
-                        <div className="w-full h-full" style={{
-                            backgroundImage: `radial-gradient(circle, white 1px, transparent 1px)`,
-                            backgroundSize: '40px 40px'
-                        }}></div>
-                    )}
-                    {currentBg.pattern === 'grid' && (
-                        <div className="w-full h-full" style={{
-                            backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), 
-                                            linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
-                            backgroundSize: '50px 50px'
-                        }}></div>
-                    )}
-                    {currentBg.pattern === 'circles' && (
-                        <div className="w-full h-full" style={{
-                            backgroundImage: `radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%),
-                                            radial-gradient(circle at 80% 20%, rgba(255,255,255,0.1) 0%, transparent 50%),
-                                            radial-gradient(circle at 40% 80%, rgba(255,255,255,0.1) 0%, transparent 50%)`,
-                            backgroundSize: '100% 100%'
-                        }}></div>
-                    )}
-                    {currentBg.pattern === 'waves' && (
-                        <div className="w-full h-full" style={{
-                            backgroundImage: `repeating-linear-gradient(45deg, rgba(255,255,255,0.1) 0px, rgba(255,255,255,0.1) 2px, 
-                                            transparent 2px, transparent 8px)`,
-                            backgroundSize: '20px 20px'
-                        }}></div>
-                    )}
-                    {currentBg.pattern === 'squares' && (
-                        <div className="w-full h-full" style={{
-                            backgroundImage: `linear-gradient(45deg, rgba(255,255,255,0.1) 25%, transparent 25%, 
-                                            transparent 75%, rgba(255,255,255,0.1) 75%, rgba(255,255,255,0.1)),
-                                            linear-gradient(45deg, rgba(255,255,255,0.1) 25%, transparent 25%, 
-                                            transparent 75%, rgba(255,255,255,0.1) 75%, rgba(255,255,255,0.1))`,
-                            backgroundSize: '60px 60px',
-                            backgroundPosition: '0 0, 30px 30px'
-                        }}></div>
-                    )}
-                    {currentBg.pattern === 'triangles' && (
-                        <div className="w-full h-full" style={{
-                            backgroundImage: `polygon(0% 0%, 100% 0%, 50% 100%)`,
-                            backgroundSize: '60px 60px'
-                        }}></div>
-                    )}
-                </div>
-
-                {/* Animated Floating Particles */}
-                <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    {[...Array(20)].map((_, i) => (
-                        <div
-                            key={i}
-                            className="absolute rounded-full animate-float"
-                            style={{
-                                width: Math.random() * 6 + 2 + 'px',
-                                height: Math.random() * 6 + 2 + 'px',
-                                background: `rgba(255,255,255,${Math.random() * 0.3 + 0.1})`,
-                                left: Math.random() * 100 + '%',
-                                top: Math.random() * 100 + '%',
-                                animationDuration: Math.random() * 20 + 10 + 's',
-                                animationDelay: Math.random() * 10 + 's',
-                                opacity: Math.random() * 0.5 + 0.3
-                            }}
-                        ></div>
-                    ))}
-                </div>
-
-                {/* Glow Effects */}
-                <div className="absolute inset-0">
-                    <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-[800px] h-[400px] rounded-full blur-3xl opacity-20"
-                         style={{ background: currentBg.glowColor }}></div>
-                    <div className="absolute bottom-0 right-0 w-[600px] h-[600px] rounded-full blur-3xl opacity-20"
-                         style={{ background: currentBg.glowColor }}></div>
-                    <div className="absolute top-1/2 left-0 w-[400px] h-[400px] rounded-full blur-3xl opacity-10"
-                         style={{ background: currentBg.glowColor }}></div>
-                </div>
-                
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 relative z-10">
-                    {/* Background Selector */}
-                    <div className="fixed bottom-6 right-6 z-50 flex gap-2">
-                        <button
-                            onClick={refreshBackground}
-                            className="glass-card px-4 py-2 rounded-xl text-xs font-semibold text-white hover:text-amber-400 transition-all hover:scale-105 backdrop-blur-xl flex items-center gap-2"
-                            title="Change Background"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
-                            <span className="hidden sm:inline">Change Theme</span>
-                        </button>
-                    </div>
-
-                    {/* HERO SECTION */}
-                    <div className="text-center max-w-4xl mx-auto pt-6 pb-8">
-                        <span className="inline-block px-4 py-1.5 rounded-full bg-black/20 backdrop-blur-md border border-white/10 text-white/90 text-xs font-bold uppercase tracking-wider mb-6 animate-pulse">
-                            🏆 Malaysia • Perak Edition
-                        </span>
-                        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white mb-6 leading-tight drop-shadow-2xl">
-                            Find Your Ultimate <br />
-                            <span className={`text-transparent bg-clip-text bg-gradient-to-r ${currentBg.accent} animate-gradient`}>
-                                Iron Paradise
-                            </span>
-                        </h1>
-                        <p className="text-white/80 text-base sm:text-lg mb-8 leading-relaxed max-w-2xl mx-auto drop-shadow-lg">
-                            Explore local fitness centers, commercial gyms, and strength clubs in Perak 
-                            with complete reviews, map directions, and WhatsApp contacts.
-                        </p>
-
-                        {/* STATS BADGES - FIXED */}
-                        <div className="flex flex-wrap justify-center gap-4 mb-8">
-                            <div className="glass-card px-6 py-3 rounded-xl backdrop-blur-xl bg-white/5 border-white/10">
-                                <span className="text-2xl font-bold text-amber-400">{totalGyms}</span>
-                                <span className="text-xs text-white/70 ml-2">Gyms</span>
-                            </div>
-                            <div className="glass-card px-6 py-3 rounded-xl backdrop-blur-xl bg-white/5 border-white/10">
-                                <span className="text-2xl font-bold text-amber-400">
-                                    {formatRating(avgRating)}
-                                </span>
-                                <span className="text-xs text-white/70 ml-2">⭐ Avg Rating</span>
-                            </div>
-                            {topRatedGym && (
-                                <div className="glass-card px-6 py-3 rounded-xl backdrop-blur-xl bg-white/5 border-white/10">
-                                    <span className="text-sm font-semibold text-white">🏆 {topRatedGym.name}</span>
-                                    <span className="text-xs text-amber-400 ml-2">
-                                        #{formatRating(topRatedGym.average_rating)}
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* CENTERED SEARCH BAR */}
-                        <form onSubmit={handleSearch} className="hero-search-wrapper max-w-3xl mx-auto">
-                            <div className="relative flex items-center">
-                                <div className="absolute left-4 text-white/50">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                    </svg>
-                                </div>
-                                <input
-                                    type="text"
-                                    value={searchTerm}
-                                    onChange={(e) => {
-                                        setSearchTerm(e.target.value);
-                                        if (e.target.value.length > 2) {
-                                            debouncedSearch(e.target.value, selectedCategory, selectedState, selectedDistrict, selectedCity, selectedFacilities, sortBy);
-                                        }
-                                    }}
-                                    placeholder="Search by gym name, town, or district..."
-                                    className="search-input w-full text-white placeholder-white/50 pl-12 pr-36 py-4 rounded-2xl text-sm sm:text-base focus:outline-none backdrop-blur-xl bg-black/30 border-white/20 focus:border-amber-500/50 focus:ring-2 focus:ring-amber-500/20 transition-all"
-                                />
-                                {searchTerm && (
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setSearchTerm('');
-                                            debouncedSearch('', selectedCategory, selectedState, selectedDistrict, selectedCity, selectedFacilities, sortBy);
-                                        }}
-                                        className="absolute right-28 text-white/50 hover:text-white transition-colors"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                    </button>
-                                )}
-                                <button
-                                    type="submit"
-                                    disabled={isLoading}
-                                    className="search-btn absolute right-2 text-white font-bold px-7 py-3 rounded-xl text-sm disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50 transition-all duration-300 hover:scale-105"
-                                >
-                                    {isLoading ? 'Searching...' : 'Search'}
-                                </button>
-                            </div>
-                        </form>
-
-                        {/* POPULAR SEARCHES */}
-                        <div className="mt-4">
-                            <p className="text-xs text-white/50 mb-2">Popular searches:</p>
-                            <div className="flex flex-wrap justify-center gap-2">
-                                {['Ipoh', 'Taiping', 'Kampar', 'Sitiawan'].map((term) => (
-                                    <button
-                                        key={term}
-                                        onClick={() => {
-                                            setSearchTerm(term);
-                                            handleSearch(new Event('submit'));
-                                        }}
-                                        className="text-xs px-3 py-1 rounded-full bg-black/30 backdrop-blur-sm text-white/70 hover:text-amber-400 hover:bg-amber-500/20 border border-white/10 transition-all"
-                                    >
-                                        {term}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* FILTERS SECTION */}
-                    <div className="mb-8">
-                        <div className="bg-black/20 backdrop-blur-md border border-white/10 rounded-2xl p-4">
-                            {/* Filter Row */}
-                            <div className="flex flex-wrap items-center gap-3">
-                                <span className="text-xs text-white/50 font-semibold">Filters:</span>
-                                
-                                {/* Category Filter */}
-                                {categories.length > 0 && (
-                                    <div className="relative">
-                                        <select
-                                            value={selectedCategory}
-                                            onChange={(e) => handleCategoryFilter(e.target.value)}
-                                            className="bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 text-white text-xs rounded-xl px-4 py-2 pr-8 focus:outline-none focus:border-amber-500/70 focus:ring-2 focus:ring-amber-500/20 transition-all cursor-pointer appearance-none min-w-[140px]"
-                                            style={{
-                                                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
-                                                backgroundRepeat: 'no-repeat',
-                                                backgroundPosition: 'right 10px center',
-                                                backgroundSize: '10px'
-                                            }}
-                                        >
-                                            <option value="" className="bg-slate-800 text-white">All Categories</option>
-                                            {categories.map((cat) => (
-                                                <option key={cat.id} value={cat.id} className="bg-slate-800 text-white hover:bg-slate-700">
-                                                    {cat.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                )}
-
-                                {/* State Filter */}
-                                {states.length > 0 && (
-                                    <div className="relative">
-                                        <select
-                                            value={selectedState}
-                                            onChange={(e) => handleStateChange(e.target.value)}
-                                            className="bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 text-white text-xs rounded-xl px-4 py-2 pr-8 focus:outline-none focus:border-amber-500/70 focus:ring-2 focus:ring-amber-500/20 transition-all cursor-pointer appearance-none min-w-[140px]"
-                                            style={{
-                                                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
-                                                backgroundRepeat: 'no-repeat',
-                                                backgroundPosition: 'right 10px center',
-                                                backgroundSize: '10px'
-                                            }}
-                                        >
-                                            <option value="">All States</option>
-                                            {states.map((state) => (
-                                                <option key={state.id} value={state.id} className="bg-slate-800 text-white hover:bg-slate-700">
-                                                    {state.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                )}
-
-                                {/* District Filter */}
-                                {filteredDistricts.length > 0 && (
-                                    <div className="relative">
-                                        <select
-                                            value={selectedDistrict}
-                                            onChange={(e) => handleDistrictChange(e.target.value)}
-                                            className="bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 text-white text-xs rounded-xl px-4 py-2 pr-8 focus:outline-none focus:border-amber-500/70 focus:ring-2 focus:ring-amber-500/20 transition-all cursor-pointer appearance-none min-w-[140px]"
-                                            style={{
-                                                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
-                                                backgroundRepeat: 'no-repeat',
-                                                backgroundPosition: 'right 10px center',
-                                                backgroundSize: '10px'
-                                            }}
-                                        >
-                                            <option value="">All Districts</option>
-                                            {filteredDistricts.map((district) => (
-                                                <option key={district.id} value={district.id} className="bg-slate-800 text-white hover:bg-slate-700">
-                                                    {district.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                )}
-
-                                {/* City Filter */}
-                                {filteredCities.length > 0 && (
-                                    <div className="relative">
-                                        <select
-                                            value={selectedCity}
-                                            onChange={(e) => handleCityChange(e.target.value)}
-                                            className="bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 text-white text-xs rounded-xl px-4 py-2 pr-8 focus:outline-none focus:border-amber-500/70 focus:ring-2 focus:ring-amber-500/20 transition-all cursor-pointer appearance-none min-w-[140px]"
-                                            style={{
-                                                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
-                                                backgroundRepeat: 'no-repeat',
-                                                backgroundPosition: 'right 10px center',
-                                                backgroundSize: '10px'
-                                            }}
-                                        >
-                                            <option value="">All Cities</option>
-                                            {filteredCities.map((city) => (
-                                                <option key={city.id} value={city.id} className="bg-slate-800 text-white hover:bg-slate-700">
-                                                    {city.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                )}
-
-                                {/* More Filters Toggle */}
-                                <button
-                                    onClick={() => setShowMoreFilters(!showMoreFilters)}
-                                    className="text-xs text-white/50 hover:text-white/80 transition px-2 py-1"
-                                >
-                                    {showMoreFilters ? 'Less Filters ▲' : 'More Filters ▼'}
-                                </button>
-
-                                {/* Clear Filters */}
-                                {hasActiveFilters && (
-                                    <button
-                                        onClick={clearFilters}
-                                        className="text-xs text-amber-400 hover:text-amber-300 transition px-2 py-1"
-                                    >
-                                        Clear All ✕
-                                    </button>
-                                )}
-                            </div>
-
-                            {/* More Filters - Facilities */}
-                            {showMoreFilters && facilities.length > 0 && (
-                                <div className="mt-3 pt-3 border-t border-white/5">
-                                    <div className="flex flex-wrap gap-2">
-                                        <span className="text-xs text-white/50 font-semibold mr-1">Facilities:</span>
-                                        {facilities.map((facility) => (
-                                            <button
-                                                key={facility.id}
-                                                onClick={() => toggleFacility(facility.id)}
-                                                className={`text-xs px-3 py-1 rounded-full transition-all ${ 
-                                                    selectedFacilities.includes(facility.id)
-                                                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                                                        : 'bg-white/5 text-white/70 border border-white/10 hover:bg-white/10'
-                                                }`}
-                                            >
-                                                {facility.icon || '🏋️'} {facility.name}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Active Filter Chips */}
-                            {hasActiveFilters && (
-                                <div className="mt-3 pt-3 border-t border-white/5 flex flex-wrap gap-2">
-                                    <span className="text-xs text-white/50 font-semibold mr-1">Active:</span>
-                                    {selectedCategory && (
-                                        <span className="inline-flex items-center gap-1 text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full">
-                                            {categories.find(c => c.id == selectedCategory)?.name}
-                                            <button onClick={() => handleCategoryFilter('')} className="hover:text-amber-300">✕</button>
-                                        </span>
-                                    )}
-                                    {selectedState && (
-                                        <span className="inline-flex items-center gap-1 text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full">
-                                            {states.find(s => s.id == selectedState)?.name}
-                                            <button onClick={() => handleStateChange('')} className="hover:text-amber-300">✕</button>
-                                        </span>
-                                    )}
-                                    {selectedDistrict && (
-                                        <span className="inline-flex items-center gap-1 text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full">
-                                            {districts.find(d => d.id == selectedDistrict)?.name}
-                                            <button onClick={() => handleDistrictChange('')} className="hover:text-amber-300">✕</button>
-                                        </span>
-                                    )}
-                                    {selectedCity && (
-                                        <span className="inline-flex items-center gap-1 text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full">
-                                            {cities.find(c => c.id == selectedCity)?.name}
-                                            <button onClick={() => handleCityChange('')} className="hover:text-amber-300">✕</button>
-                                        </span>
-                                    )}
-                                    {selectedFacilities.map(id => {
-                                        const facility = facilities.find(f => f.id === id);
-                                        return facility && (
-                                            <span key={id} className="inline-flex items-center gap-1 text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full">
-                                                {facility.name}
-                                                <button onClick={() => toggleFacility(id)} className="hover:text-amber-300">✕</button>
-                                            </span>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* RESULTS SECTION */}
-                    <div className="mt-8">
-                        <div className="flex flex-wrap justify-between items-center mb-6 border-b border-white/10 pb-4">
+            <div className="bg-[#f7f7f5]">
+                <section className="border-b border-stone-200 bg-[#eeece7]">
+                    <div className="mx-auto max-w-7xl px-5 py-12 sm:px-8 sm:py-16">
+                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-stone-500">Fitness directory · Perak, Malaysia</p>
+                        <div className="mt-4 grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
                             <div>
-                                <h2 className="text-xl font-bold text-white tracking-wide drop-shadow-lg">
-                                    {searchTerm ? `Results for "${searchTerm}"` : 'Recommended Locations'}
-                                </h2>
-                                <p className="text-xs text-white/60 mt-1">
-                                    {totalGyms} gyms found • Page {gyms.current_page || 1} of {gyms.last_page || 1}
-                                </p>
+                                <h1 className="max-w-3xl text-4xl font-bold tracking-[-0.05em] text-stone-950 sm:text-5xl">A better place to find your next gym.</h1>
+                                <p className="mt-4 max-w-2xl text-base leading-7 text-stone-600">Search local fitness centres, compare the essentials, and get directions or contact the gym directly.</p>
                             </div>
-                            <div className="flex items-center gap-3">
-                                {/* Sort By */}
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xs text-white/40">Sort by:</span>
-                                    <select
-                                        value={sortBy}
-                                        onChange={(e) => handleSortChange(e.target.value)}
-                                       className="bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600/50 text-slate-200 text-xs rounded-xl px-3 py-1.5 pr-8 focus:outline-none focus:border-amber-500/70 focus:ring-2 focus:ring-amber-500/20 transition-all cursor-pointer appearance-none min-w-[140px] font-medium"
-                                            style={{
-                                                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
-                                                backgroundRepeat: 'no-repeat',
-                                                backgroundPosition: 'right 10px center',
-                                                backgroundSize: '10px'
-                                            }}
-                                    >
-                                        <option value="rating">Rating (High→Low)</option>
-                                        <option value="newest">Newest</option>
-                                        <option value="name">Name A-Z</option>
-                                    </select>
-                                </div>
-
-                                {/* VIEW TOGGLES */}
-                                <div className="flex rounded-lg bg-black/30 backdrop-blur-sm p-1 border border-white/10">
-                                    <button
-                                        onClick={() => setViewMode('grid')}
-                                        className={`p-2 rounded transition-colors ${ 
-                                            viewMode === 'grid' ? 'bg-amber-500/20 text-amber-400' : 'text-white/50 hover:text-white'
-                                        }`}
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                                        </svg>
-                                    </button>
-                                    <button
-                                        onClick={() => setViewMode('list')}
-                                        className={`p-2 rounded transition-colors ${ 
-                                            viewMode === 'list' ? 'bg-amber-500/20 text-amber-400' : 'text-white/50 hover:text-white'
-                                        }`}
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-                                        </svg>
-                                    </button>
-                                </div>
+                            <div className="grid grid-cols-2 divide-x divide-stone-300 border-y border-stone-300 py-3 text-center sm:min-w-[285px]">
+                                <div className="px-5"><p className="text-2xl font-bold tracking-tight">{totalGyms}</p><p className="mt-1 text-xs text-stone-500">listed gyms</p></div>
+                                <div className="px-5"><p className="text-2xl font-bold tracking-tight">{formatRating(avgRating)}</p><p className="mt-1 text-xs text-stone-500">average rating</p></div>
                             </div>
                         </div>
-
-                        {gymList.length > 0 ? (
-                            <div className={`grid ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'} gap-6`}>
-                                {gymList.map((gym, index) => {
-                                    const gymImage = getGymImage(gym.id);
-                                    const hasOwnImages = gym.images && gym.images.length > 0;
-                                    const primaryImg = hasOwnImages 
-                                        ? (gym.images.find((img) => img.is_primary)?.url || gym.images[0]?.url)
-                                        : gymImage;
-
-                                    const mapUrl = gym.google_maps_url || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                                        `${gym.name} ${gym.address}`
-                                    )}`;
-
-                                    const waNumber = gym.whatsapp_number ? gym.whatsapp_number.replace(/[^0-9]/g, '') : null;
-                                    const waUrl = waNumber 
-                                        ? `https://wa.me/${waNumber}?text=${encodeURIComponent(`Hi ${gym.name}, I found your gym on GymFinder Perak!`)}`
-                                        : null;
-
-                                    const isNew = new Date(gym.created_at) > new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
-                                    const gymShowUrl = getGymShowUrl(gym);
-
-                                    return (
-                                        <Link
-                                            key={gym.id}
-                                            href={gymShowUrl}
-                                            className="block group"
-                                        >
-                                            <div 
-                                                className={`glass-card rounded-2xl overflow-hidden flex flex-col justify-between backdrop-blur-xl bg-white/5 border-white/10 ${
-                                                    viewMode === 'list' ? 'md:flex-row md:h-48' : ''
-                                                } hover:scale-[1.02] transition-all duration-300 cursor-pointer`}
-                                                style={{ animationDelay: `${index * 50}ms` }}
-                                            >
-                                                {/* Image Section */}
-                                                {viewMode === 'grid' ? (
-                                                    <div className="relative h-52 overflow-hidden bg-slate-900">
-                                                        <img
-                                                            src={primaryImg}
-                                                            alt={gym.name}
-                                                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                                                            loading="lazy"
-                                                        />
-                                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                                                        
-                                                        {/* New Badge */}
-                                                        {isNew && (
-                                                            <div className="absolute top-3 left-3 px-3 py-1 rounded-lg bg-emerald-500/90 backdrop-blur-md text-white text-[10px] font-bold uppercase">
-                                                                ✨ New
-                                                            </div>
-                                                        )}
-                                                        
-                                                        {/* Rating Badge */}
-                                                        <div className="absolute top-3 right-3 bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/10 flex items-center gap-1">
-                                                            <span className="text-amber-400 text-xs">⭐</span>
-                                                            <span className="text-xs font-bold text-white">
-                                                                {formatRating(gym.average_rating)}
-                                                            </span>
-                                                        </div>
-                                                        
-                                                        {/* Open Status */}
-                                                        {gym.is_open && (
-                                                            <div className="absolute bottom-3 left-3 bg-emerald-500/90 backdrop-blur-md px-3 py-1 rounded-lg text-[10px] font-bold text-white uppercase flex items-center gap-1">
-                                                                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
-                                                                Open Now
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <div className="relative h-48 md:h-full md:w-48 flex-shrink-0 overflow-hidden bg-slate-900">
-                                                        <img
-                                                            src={primaryImg}
-                                                            alt={gym.name}
-                                                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                                                            loading="lazy"
-                                                        />
-                                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent md:bg-gradient-to-r"></div>
-                                                        {gym.is_open && (
-                                                            <div className="absolute bottom-3 left-3 bg-emerald-500/90 backdrop-blur-md px-2 py-0.5 rounded-lg text-[9px] font-bold text-white uppercase flex items-center gap-1">
-                                                                <span className="w-1 h-1 rounded-full bg-white animate-pulse"></span>
-                                                                Open
-                                                            </div>
-                                                        )}
-                                                        {isNew && (
-                                                            <div className="absolute top-3 left-3 px-2 py-0.5 rounded-lg bg-emerald-500/90 backdrop-blur-md text-white text-[8px] font-bold uppercase">
-                                                                ✨ New
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-
-                                                {/* Content Section */}
-                                                <div className={`p-6 flex-1 flex flex-col justify-between ${
-                                                    viewMode === 'list' ? 'md:flex-row md:items-center' : ''
-                                                }`}>
-                                                    <div className={viewMode === 'list' ? 'md:flex-1' : ''}>
-                                                        {/* Gym Name */}
-                                                        <div className="flex items-start justify-between">
-                                                            <h3 className="text-xl font-bold text-white mb-1 tracking-tight group-hover:text-amber-400 transition-colors line-clamp-1">
-                                                                {gym.name}
-                                                            </h3>
-                                                            {viewMode === 'grid' && (
-                                                                <button 
-                                                                    className="text-white/30 hover:text-amber-400 transition-colors ml-2 flex-shrink-0"
-                                                                    onClick={(e) => {
-                                                                        e.preventDefault();
-                                                                        e.stopPropagation();
-                                                                        // Toggle favorite
-                                                                    }}
-                                                                >
-                                                                    ♡
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                        
-                                                        <p className="text-xs text-white/60 mb-2 line-clamp-2 leading-relaxed">
-                                                            {gym.address}
-                                                        </p>
-                                                        
-                                                        {viewMode === 'list' && (
-                                                            <div className="flex flex-wrap gap-2 mb-2">
-                                                                <span className="text-xs bg-white/10 text-white/70 px-2 py-0.5 rounded backdrop-blur-sm">
-                                                                    📍 {gym.city?.name || 'Perak'}
-                                                                </span>
-                                                                <span className="text-xs bg-white/10 text-white/70 px-2 py-0.5 rounded backdrop-blur-sm">
-                                                                    ⭐ {formatRating(gym.average_rating)}
-                                                                </span>
-                                                            </div>
-                                                        )}
-
-                                                        {/* Facilities */}
-                                                        {gym.facilities && gym.facilities.length > 0 && (
-                                                            <div className="flex flex-wrap gap-1.5 mb-3">
-                                                                {gym.facilities.slice(0, viewMode === 'list' ? 5 : 4).map((facility) => (
-                                                                    <span
-                                                                        key={facility.id}
-                                                                        className="text-[10px] bg-white/10 text-white/70 border border-white/10 px-2 py-0.5 rounded-md backdrop-blur-sm flex items-center gap-1"
-                                                                    >
-                                                                        {facility.icon || '✓'} {facility.name}
-                                                                    </span>
-                                                                ))}
-                                                                {gym.facilities.length > 4 && viewMode === 'grid' && (
-                                                                    <span className="text-[10px] text-white/40">
-                                                                        +{gym.facilities.length - 4} more
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Action Buttons */}
-                                                    <div className={`${viewMode === 'list' ? 'md:ml-6 md:min-w-[200px]' : ''}`}>
-                                                        <div className="grid grid-cols-2 gap-3 pt-4 border-t border-white/10">
-                                                            {waUrl ? (
-                                                                <a
-                                                                    href={waUrl}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="flex items-center justify-center gap-2 bg-emerald-500/20 hover:bg-emerald-500 text-emerald-400 hover:text-white border border-emerald-500/30 font-bold text-xs py-2.5 px-3 rounded-xl transition-all duration-300 hover:scale-105 backdrop-blur-sm"
-                                                                    onClick={(e) => e.stopPropagation()}
-                                                                >
-                                                                    <span>💬 WhatsApp</span>
-                                                                </a>
-                                                            ) : (
-                                                                <button
-                                                                    disabled
-                                                                    className="bg-white/5 text-white/30 text-xs font-semibold py-2.5 px-3 rounded-xl cursor-not-allowed backdrop-blur-sm"
-                                                                    onClick={(e) => e.stopPropagation()}
-                                                                >
-                                                                    No WhatsApp
-                                                                </button>
-                                                            )}
-
-                                                            <a
-                                                                href={mapUrl}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="flex items-center justify-center gap-2 bg-amber-500/20 hover:bg-amber-500 text-amber-400 hover:text-white border border-amber-500/30 font-bold text-xs py-2.5 px-3 rounded-xl transition-all duration-300 hover:scale-105 backdrop-blur-sm"
-                                                                onClick={(e) => e.stopPropagation()}
-                                                            >
-                                                                <span>🗺️ Location</span>
-                                                            </a>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </Link>
-                                    );
-                                })}
-                            </div>
-                        ) : (
-                            /* Empty State with Clear Filters */
-                            <div className="text-center py-20 glass-card rounded-3xl backdrop-blur-xl bg-white/5 border-white/10">
-                                <span className="text-6xl mb-4 block">🔍</span>
-                                <h3 className="text-2xl font-bold text-white mt-4">No Gyms Found</h3>
-                                <p className="text-white/60 text-sm mt-2 max-w-md mx-auto">
-                                    {hasActiveFilters 
-                                        ? "We couldn't find any gyms matching your filters. Try adjusting your criteria."
-                                        : "We couldn't find any gyms matching your search criteria."}
-                                </p>
-                                {hasActiveFilters && (
-                                    <button
-                                        onClick={clearFilters}
-                                        className="mt-4 text-sm px-6 py-2.5 rounded-xl bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/30 transition-all"
-                                    >
-                                        Clear All Filters
-                                    </button>
-                                )}
-                                <div className="mt-6">
-                                    <p className="text-xs text-white/40 mb-3">Try these suggestions:</p>
-                                    <div className="flex flex-wrap justify-center gap-2">
-                                        {['Ipoh', 'Taiping', 'Kampar', 'Sitiawan'].map((suggestion) => (
-                                            <button
-                                                key={suggestion}
-                                                onClick={() => {
-                                                    setSearchTerm(suggestion);
-                                                    handleSearch(new Event('submit'));
-                                                }}
-                                                className="text-sm px-4 py-2 rounded-xl bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/30 transition-all backdrop-blur-sm"
-                                            >
-                                                Search "{suggestion}"
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+                        {topRatedGym && <p className="mt-8 text-sm text-stone-500"><span className="font-semibold text-stone-900">Top rated:</span> {topRatedGym.name} · {formatRating(topRatedGym.average_rating)}</p>}
                     </div>
+                </section>
 
-                    {/* PAGINATION */}
-                    {gyms.last_page > 1 && (
-                        <div className="flex justify-center mt-12">
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => router.get('/', { 
-                                        page: gyms.current_page - 1, 
-                                        search: searchTerm, 
-                                        category_ids: selectedCategory ? [selectedCategory] : [],
-                                        state_id: selectedState,
-                                        district_id: selectedDistrict,
-                                        city_id: selectedCity,
-                                        facility_ids: selectedFacilities,
-                                        sort: sortBy
-                                    })}
-                                    disabled={gyms.current_page <= 1}
-                                    className="px-4 py-2 rounded-xl bg-black/30 backdrop-blur-sm text-white/70 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/10 transition border border-white/10"
-                                >
-                                    Previous
-                                </button>
-                                <span className="px-4 py-2 rounded-xl bg-amber-500/20 text-amber-400 backdrop-blur-sm border border-amber-500/30">
-                                    {gyms.current_page} / {gyms.last_page}
-                                </span>
-                                <button
-                                    onClick={() => router.get('/', { 
-                                        page: gyms.current_page + 1,
-                                        search: searchTerm, 
-                                        category_ids: selectedCategory ? [selectedCategory] : [],
-                                        state_id: selectedState,
-                                        district_id: selectedDistrict,
-                                        city_id: selectedCity,
-                                        facility_ids: selectedFacilities,
-                                        sort: sortBy
-                                    })}
-                                    disabled={gyms.current_page >= gyms.last_page}
-                                    className="px-4 py-2 rounded-xl bg-black/30 backdrop-blur-sm text-white/70 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/10 transition border border-white/10"
-                                >
-                                    Next
-                                </button>
-                            </div>
+                <div className="mx-auto max-w-7xl px-5 py-8 sm:px-8 sm:py-10">
+                    <form onSubmit={handleSearch} className="rounded-2xl border border-stone-200 bg-white p-3 shadow-[0_8px_24px_rgba(28,25,23,0.06)] sm:flex sm:items-center sm:gap-3">
+                        <label className="flex min-w-0 flex-1 items-center gap-3 px-3">
+                            <svg className="h-5 w-5 shrink-0 text-stone-400" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m21 21-4.35-4.35m1.35-5.65a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
+                            <input value={searchTerm} onChange={(event) => { setSearchTerm(event.target.value); if (event.target.value.length > 2) debouncedSearch(event.target.value, selectedCategory, selectedState, selectedDistrict, selectedCity, selectedFacilities, sortBy); }} className="min-w-0 flex-1 py-3 text-sm text-stone-900 outline-none placeholder:text-stone-400" placeholder="Search by gym, town, or district" />
+                            {searchTerm && <button type="button" onClick={() => { setSearchTerm(''); debouncedSearch('', selectedCategory, selectedState, selectedDistrict, selectedCity, selectedFacilities, sortBy); }} className="text-xs font-semibold text-stone-400 hover:text-stone-950">Clear</button>}
+                        </label>
+                        <button type="submit" disabled={isLoading} className="mt-2 w-full rounded-xl bg-stone-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-60 sm:mt-0 sm:w-auto">{isLoading ? 'Searching…' : 'Search'}</button>
+                    </form>
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-stone-500"><span>Popular:</span>{['Ipoh', 'Taiping', 'Kampar', 'Sitiawan'].map((term) => <button key={term} onClick={() => chooseSearch(term)} className="rounded-full border border-stone-300 bg-white px-3 py-1.5 font-medium text-stone-600 transition hover:border-stone-950 hover:text-stone-950">{term}</button>)}</div>
+
+                    <section className="mt-8 rounded-2xl border border-stone-200 bg-white p-4 sm:p-5">
+                        <div className="flex flex-wrap items-center gap-2.5">
+                            <span className="mr-1 text-xs font-bold uppercase tracking-wider text-stone-400">Filter</span>
+                            {categories.length > 0 && <Select value={selectedCategory} onChange={(event) => handleCategoryFilter(event.target.value)}><option value="">All categories</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</Select>}
+                            {states.length > 0 && <Select value={selectedState} onChange={(event) => handleStateChange(event.target.value)}><option value="">All states</option>{states.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</Select>}
+                            {filteredDistricts.length > 0 && <Select value={selectedDistrict} onChange={(event) => handleDistrictChange(event.target.value)}><option value="">All districts</option>{filteredDistricts.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</Select>}
+                            {filteredCities.length > 0 && <Select value={selectedCity} onChange={(event) => handleCityChange(event.target.value)}><option value="">All cities</option>{filteredCities.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</Select>}
+                            <button onClick={() => setShowMoreFilters(!showMoreFilters)} className="px-2 py-2 text-xs font-semibold text-stone-600 hover:text-stone-950">{showMoreFilters ? 'Fewer filters' : 'More filters'}</button>
+                            {hasActiveFilters && <button onClick={clearFilters} className="px-2 py-2 text-xs font-semibold text-red-700 hover:text-red-900">Clear all</button>}
                         </div>
-                    )}
+                        {showMoreFilters && facilities.length > 0 && <div className="mt-4 border-t border-stone-100 pt-4"><p className="mb-2 text-xs font-semibold text-stone-500">Facilities</p><div className="flex flex-wrap gap-2">{facilities.map((item) => <button key={item.id} onClick={() => toggleFacility(item.id)} className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${selectedFacilities.includes(item.id) ? 'border-stone-950 bg-stone-950 text-white' : 'border-stone-300 text-stone-600 hover:border-stone-950'}`}>{item.name}</button>)}</div></div>}
+                        {hasActiveFilters && <div className="mt-4 flex flex-wrap gap-2 border-t border-stone-100 pt-4">{selectedCategory && <FilterChip label={optionLabel(categories, selectedCategory)} onRemove={() => handleCategoryFilter('')} />}{selectedState && <FilterChip label={optionLabel(states, selectedState)} onRemove={() => handleStateChange('')} />}{selectedDistrict && <FilterChip label={optionLabel(districts, selectedDistrict)} onRemove={() => handleDistrictChange('')} />}{selectedCity && <FilterChip label={optionLabel(cities, selectedCity)} onRemove={() => handleCityChange('')} />}{selectedFacilities.map((id) => <FilterChip key={id} label={optionLabel(facilities, id)} onRemove={() => toggleFacility(id)} />)}</div>}
+                    </section>
+
+                    <section className="mt-10">
+                        <div className="flex flex-col gap-4 border-b border-stone-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
+                            <div><h2 className="text-2xl font-bold tracking-[-0.035em]">{searchTerm ? `Results for “${searchTerm}”` : 'Browse gyms'}</h2><p className="mt-1 text-sm text-stone-500">{totalGyms} gyms found · Page {gyms.current_page || 1} of {gyms.last_page || 1}</p></div>
+                            <div className="flex items-center gap-3"><label className="flex items-center gap-2 text-xs text-stone-500">Sort <Select value={sortBy} onChange={(event) => handleSortChange(event.target.value)}><option value="rating">Top rated</option><option value="newest">Newest</option><option value="name">Name A–Z</option></Select></label><div className="flex rounded-lg border border-stone-300 p-1"><button onClick={() => setViewMode('grid')} aria-label="Grid view" className={`grid h-8 w-8 place-items-center rounded ${viewMode === 'grid' ? 'bg-stone-950 text-white' : 'text-stone-500 hover:text-stone-950'}`}><GridIcon /></button><button onClick={() => setViewMode('list')} aria-label="List view" className={`grid h-8 w-8 place-items-center rounded ${viewMode === 'list' ? 'bg-stone-950 text-white' : 'text-stone-500 hover:text-stone-950'}`}><ListIcon /></button></div></div>
+                        </div>
+                        {gymList.length ? <div className={`mt-6 grid gap-5 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>{gymList.map((gym) => <GymCard key={gym.id} gym={gym} image={gym.images?.find((item) => item.is_primary)?.url || gym.images?.[0]?.url || getGymImage(gym.id)} isList={viewMode === 'list'} rating={formatRating(gym.average_rating)} href={showUrl(gym)} />)}</div> : <EmptyState active={hasActiveFilters} clear={clearFilters} choose={chooseSearch} />}
+                    </section>
+                    {gyms.last_page > 1 && <div className="mt-10 flex justify-center gap-2"><button disabled={gyms.current_page <= 1} onClick={() => router.get('/', { ...currentQuery(), page: gyms.current_page - 1 })} className="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40">Previous</button><span className="rounded-lg bg-stone-950 px-4 py-2 text-sm font-semibold text-white">{gyms.current_page} / {gyms.last_page}</span><button disabled={gyms.current_page >= gyms.last_page} onClick={() => router.get('/', { ...currentQuery(), page: gyms.current_page + 1 })} className="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40">Next</button></div>}
                 </div>
             </div>
         </MainLayout>
     );
 }
+
+function FilterChip({ label, onRemove }) { return <span className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1.5 text-xs font-medium text-stone-700">{label}<button onClick={onRemove} aria-label={`Remove ${label}`} className="text-stone-400 hover:text-stone-950">×</button></span>; }
+function GridIcon() { return <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1 1h5v5H1V1Zm9 0h5v5h-5V1ZM1 10h5v5H1v-5Zm9 0h5v5h-5v-5Z" /></svg>; }
+function ListIcon() { return <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 4h11M3 8h11M3 12h11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /><path d="M1 4h.01M1 8h.01M1 12h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>; }
+
+function GymCard({ gym, image, isList, rating, href }) {
+    const mapUrl = gym.google_maps_url || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${gym.name} ${gym.address}`)}`;
+    const number = gym.whatsapp_number?.replace(/[^0-9]/g, '');
+    const whatsappUrl = number ? `https://wa.me/${number}?text=${encodeURIComponent(`Hi ${gym.name}, I found your gym on GymFinder Perak!`)}` : null;
+    const isNew = new Date(gym.created_at) > new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+    return <article className={`group overflow-hidden rounded-2xl border border-stone-200 bg-white transition hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(28,25,23,0.10)] ${isList ? 'md:flex' : ''}`}>
+        <Link href={href} className={`relative block shrink-0 overflow-hidden bg-stone-200 ${isList ? 'h-52 md:h-auto md:w-64' : 'h-52'}`}><img src={image} alt={gym.name} loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />{isNew && <span className="absolute left-3 top-3 rounded-full bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-stone-700 shadow-sm">New</span>}{gym.is_open && <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-stone-950 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white"><i className="h-1.5 w-1.5 rounded-full bg-emerald-400" />Open now</span>}</Link>
+        <div className="flex min-w-0 flex-1 flex-col p-5"><div className="flex items-start justify-between gap-3"><div><Link href={href} className="text-lg font-bold tracking-[-0.025em] text-stone-950 hover:underline">{gym.name}</Link><p className="mt-1 text-sm leading-5 text-stone-500">{gym.address}</p></div><span className="shrink-0 rounded-full border border-stone-200 px-2.5 py-1 text-xs font-bold text-stone-700">{rating}</span></div><div className="mt-4 flex flex-wrap gap-1.5">{gym.city?.name && <span className="rounded-md bg-stone-100 px-2 py-1 text-[11px] font-medium text-stone-600">{gym.city.name}</span>}{gym.facilities?.slice(0, isList ? 5 : 4).map((item) => <span key={item.id} className="rounded-md bg-stone-100 px-2 py-1 text-[11px] font-medium text-stone-600">{item.name}</span>)}</div><div className="mt-5 grid grid-cols-2 gap-2 border-t border-stone-100 pt-4">{whatsappUrl ? <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" onClick={(event) => event.stopPropagation()} className="rounded-lg bg-stone-950 px-3 py-2 text-center text-xs font-semibold text-white transition hover:bg-stone-700">WhatsApp</a> : <button disabled className="cursor-not-allowed rounded-lg bg-stone-100 px-3 py-2 text-xs font-semibold text-stone-400">No WhatsApp</button>}<a href={mapUrl} target="_blank" rel="noopener noreferrer" onClick={(event) => event.stopPropagation()} className="rounded-lg border border-stone-300 px-3 py-2 text-center text-xs font-semibold text-stone-700 transition hover:border-stone-950 hover:text-stone-950">Directions</a></div></div>
+    </article>;
+}
+
+function EmptyState({ active, clear, choose }) { return <div className="mt-6 rounded-2xl border border-dashed border-stone-300 bg-white px-5 py-16 text-center"><h3 className="text-xl font-bold">No gyms found</h3><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-stone-500">{active ? 'Try removing a few filters or searching a nearby town.' : 'There are no gyms that match this search yet.'}</p>{active && <button onClick={clear} className="mt-5 rounded-lg bg-stone-950 px-4 py-2.5 text-sm font-semibold text-white">Clear filters</button>}<div className="mt-6 flex flex-wrap justify-center gap-2">{['Ipoh', 'Taiping', 'Kampar', 'Sitiawan'].map((term) => <button key={term} onClick={() => choose(term)} className="rounded-full border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-600 hover:border-stone-950">Search {term}</button>)}</div></div>; }
