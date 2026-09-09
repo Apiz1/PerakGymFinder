@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\TaxonomyController;
 use App\Http\Controllers\Admin\AdminSearchController;
 use App\Http\Controllers\Admin\AdminNotificationController;
 use App\Http\Controllers\Admin\ActivityLogController;
+use App\Http\Controllers\Admin\AdminPendingController;
 use App\Http\Controllers\GymController;
 use App\Http\Controllers\GymOwnerApplicationController;
 use App\Http\Controllers\Owner\CreateGymController;
@@ -121,6 +122,8 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->name('admin.')
     Route::get('activity-log', [ActivityLogController::class, 'index'])->name('activity-log.index');
     Route::get('activity-log/{activity}', [ActivityLogController::class, 'show'])->name('activity-log.show');
     Schedule::command('activitylog:clean')->weekly();
+
+    Route::get('pending', [AdminPendingController::class, 'index'])->name('pending.index');
     
     });
 
