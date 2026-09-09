@@ -1,569 +1,90 @@
-import React, { useState, useEffect } from 'react';
-import { Link, router, Head } from '@inertiajs/react';
+import React, { useEffect, useState } from 'react';
+import { Head, Link, router } from '@inertiajs/react';
 import MainLayout from '@/Layouts/MainLayout';
+
+const fieldClass = 'w-full rounded-xl border border-stone-300 bg-white px-3.5 py-3 text-sm text-stone-900 outline-none placeholder:text-stone-400 transition focus:border-stone-950 focus:ring-2 focus:ring-stone-200 disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-stone-400';
+const selectClass = `${fieldClass} appearance-none`;
 
 export default function Create({ unclaimedGyms, states, districts, cities, facilities, categories }) {
     const [applicationType, setApplicationType] = useState('claim');
     const [selectedGym, setSelectedGym] = useState('');
-    const [formData, setFormData] = useState({
-        name: '',
-        address: '',
-        state_id: '',
-        district_id: '',
-        city_id: '',
-        whatsapp_number: '',
-        phone_number: '',
-        description: '',
-        facilities: [],
-        categories: [],
-    });
+    const [formData, setFormData] = useState({ name: '', address: '', state_id: '', district_id: '', city_id: '', whatsapp_number: '', phone_number: '', description: '', facilities: [], categories: [] });
     const [businessDoc, setBusinessDoc] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState({});
-
-    // Filter districts and cities based on selections
     const [filteredDistricts, setFilteredDistricts] = useState([]);
     const [filteredCities, setFilteredCities] = useState([]);
 
     useEffect(() => {
-        if (formData.state_id) {
-            setFilteredDistricts(districts.filter(d => d.state_id === parseInt(formData.state_id)));
-        } else {
-            setFilteredDistricts([]);
-        }
-        setFormData(prev => ({ ...prev, district_id: '', city_id: '' }));
+        setFilteredDistricts(formData.state_id ? districts.filter((district) => district.state_id === parseInt(formData.state_id)) : []);
+        setFormData((previous) => ({ ...previous, district_id: '', city_id: '' }));
         setFilteredCities([]);
     }, [formData.state_id, districts]);
-
     useEffect(() => {
-        if (formData.district_id) {
-            setFilteredCities(cities.filter(c => c.district_id === parseInt(formData.district_id)));
-        } else {
-            setFilteredCities([]);
-        }
-        setFormData(prev => ({ ...prev, city_id: '' }));
+        setFilteredCities(formData.district_id ? cities.filter((city) => city.district_id === parseInt(formData.district_id)) : []);
+        setFormData((previous) => ({ ...previous, city_id: '' }));
     }, [formData.district_id, cities]);
 
-    const handleInputChange = (e) => {
-        const { name, value, type, checked } = e.target;
-        
-        if (type === 'checkbox') {
-            if (name === 'facilities') {
-                setFormData(prev => ({
-                    ...prev,
-                    facilities: checked 
-                        ? [...prev.facilities, parseInt(value)]
-                        : prev.facilities.filter(id => id !== parseInt(value))
-                }));
-            } else if (name === 'categories') {
-                setFormData(prev => ({
-                    ...prev,
-                    categories: checked 
-                        ? [...prev.categories, parseInt(value)]
-                        : prev.categories.filter(id => id !== parseInt(value))
-                }));
-            }
-        } else {
-            setFormData(prev => ({ ...prev, [name]: value }));
-        }
+    const handleInputChange = (event) => {
+        const { name, value, type, checked } = event.target;
+        if (type !== 'checkbox') { setFormData((previous) => ({ ...previous, [name]: value })); return; }
+        setFormData((previous) => ({ ...previous, [name]: checked ? [...previous[name], parseInt(value)] : previous[name].filter((id) => id !== parseInt(value)) }));
     };
-
-    const handleFileChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            if (file.size > 5 * 1024 * 1024) {
-                setErrors(prev => ({ ...prev, business_doc: 'File size must be less than 5MB' }));
-                return;
-            }
-            if (!['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)) {
-                setErrors(prev => ({ ...prev, business_doc: 'Only PDF, JPG, JPEG, and PNG files are allowed' }));
-                return;
-            }
-            setBusinessDoc(file);
-            setErrors(prev => ({ ...prev, business_doc: null }));
-        }
+    const handleFileChange = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) { setErrors((previous) => ({ ...previous, business_doc: 'File size must be less than 5MB' })); return; }
+        if (!['application/pdf', 'image/jpeg', 'image/png'].includes(file.type)) { setErrors((previous) => ({ ...previous, business_doc: 'Only PDF, JPG, JPEG, and PNG files are allowed' })); return; }
+        setBusinessDoc(file);
+        setErrors((previous) => ({ ...previous, business_doc: null }));
     };
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        setIsSubmitting(true);
-        setErrors({});
-
-        const formDataObj = new FormData();
-        
-        // Add basic fields
-        formDataObj.append('application_type', applicationType);
-        if (businessDoc) {
-            formDataObj.append('business_doc', businessDoc);
+    const handleSubmit = (event) => {
+        event.preventDefault(); setIsSubmitting(true); setErrors({});
+        const payload = new FormData();
+        payload.append('application_type', applicationType);
+        if (businessDoc) payload.append('business_doc', businessDoc);
+        if (applicationType === 'claim') payload.append('gym_id', selectedGym);
+        else {
+            ['name', 'address', 'state_id', 'district_id', 'city_id', 'whatsapp_number', 'phone_number', 'description'].forEach((key) => payload.append(key, formData[key]));
+            formData.facilities.forEach((id) => payload.append('facilities[]', id));
+            formData.categories.forEach((id) => payload.append('categories[]', id));
         }
-
-        if (applicationType === 'claim') {
-            formDataObj.append('gym_id', selectedGym);
-        } else {
-            formDataObj.append('name', formData.name);
-            formDataObj.append('address', formData.address);
-            formDataObj.append('state_id', formData.state_id);
-            formDataObj.append('district_id', formData.district_id);
-            formDataObj.append('city_id', formData.city_id);
-            formDataObj.append('whatsapp_number', formData.whatsapp_number);
-            formDataObj.append('phone_number', formData.phone_number);
-            formDataObj.append('description', formData.description);
-            
-            // Add facilities and categories
-            formData.facilities.forEach(id => {
-                formDataObj.append('facilities[]', id);
-            });
-            formData.categories.forEach(id => {
-                formDataObj.append('categories[]', id);
-            });
-        }
-
-        router.post('/apply-owner', formDataObj, {
-            onError: (errors) => {
-                setErrors(errors);
-                setIsSubmitting(false);
-            },
-            onFinish: () => {
-                setIsSubmitting(false);
-            }
-        });
+        router.post('/apply-owner', payload, { onError: setErrors, onFinish: () => setIsSubmitting(false) });
     };
-
-    const selectedGymData = unclaimedGyms?.find(g => g.id === parseInt(selectedGym));
-
-    // Custom select styles to fix visibility
-    const selectStyles = "w-full px-4 py-3 bg-slate-900/80 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all appearance-none cursor-pointer [&>option]:bg-slate-900 [&>option]:text-white";
+    const selectedGymData = unclaimedGyms?.find((gym) => gym.id === parseInt(selectedGym));
+    const switchType = (type) => { setApplicationType(type); setSelectedGym(''); };
 
     return (
         <MainLayout>
             <Head title="Become a Gym Owner" />
-            
-            <div className="max-w-4xl mx-auto px-4 py-12">
-                {/* Header */}
-                <div className="text-center mb-12">
-                    <span className="inline-block px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold uppercase tracking-wider mb-4">
-                        🏪 Gym Owner Application
-                    </span>
-                    <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight mb-4">
-                        Become a <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-emerald-600">Gym Owner</span>
-                    </h1>
-                    <p className="text-slate-400 text-sm max-w-2xl mx-auto">
-                        Apply to manage a gym listing on GymFinder Perak. You can claim an existing unclaimed gym 
-                        or submit a brand new gym to our directory.
-                    </p>
-                </div>
+            <div className="bg-[#f7f7f5] py-10 sm:py-14">
+                <div className="mx-auto max-w-4xl px-5 sm:px-8">
+                    <header className="border-b border-stone-200 pb-9"><p className="text-xs font-bold uppercase tracking-[0.16em] text-stone-500">GymFinder Perak · Partner programme</p><h1 className="mt-3 text-3xl font-bold tracking-[-0.045em] text-stone-950 sm:text-4xl">Manage your gym listing.</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">Claim an existing unclaimed listing or apply to add a new gym to the directory.</p></header>
 
-                {/* Application Form */}
-                <div className="glass-card rounded-2xl p-6 sm:p-8 backdrop-blur-xl bg-white/5 border-white/10">
-                    <form onSubmit={handleSubmit} className="space-y-8">
-                        {/* Application Type Selection */}
-                        <div>
-                            <label className="block text-sm font-semibold text-white mb-3">
-                                Application Type
-                            </label>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setApplicationType('claim');
-                                        setSelectedGym('');
-                                    }}
-                                    className={`p-4 rounded-xl border-2 transition-all text-left ${
-                                        applicationType === 'claim'
-                                            ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 shadow-lg shadow-emerald-500/20'
-                                            : 'border-slate-700/50 text-slate-400 hover:border-slate-600 hover:bg-white/5'
-                                    }`}
-                                >
-                                    <div className="text-2xl mb-2">📋</div>
-                                    <div className="font-bold text-sm">Claim Existing Gym</div>
-                                    <div className="text-xs mt-1 opacity-70">Take over an unclaimed gym listing</div>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setApplicationType('new');
-                                        setSelectedGym('');
-                                    }}
-                                    className={`p-4 rounded-xl border-2 transition-all text-left ${
-                                        applicationType === 'new'
-                                            ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 shadow-lg shadow-emerald-500/20'
-                                            : 'border-slate-700/50 text-slate-400 hover:border-slate-600 hover:bg-white/5'
-                                    }`}
-                                >
-                                    <div className="text-2xl mb-2">🏗️</div>
-                                    <div className="font-bold text-sm">Register New Gym</div>
-                                    <div className="text-xs mt-1 opacity-70">Add a brand new gym to the directory</div>
-                                </button>
-                            </div>
-                        </div>
+                    <form onSubmit={handleSubmit} className="mt-8 space-y-7">
+                        <section className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-7"><SectionTitle step="01" title="Choose an application type" description="Select the option that best describes your gym." /><div className="mt-5 grid gap-3 sm:grid-cols-2"><TypeOption active={applicationType === 'claim'} title="Claim an existing gym" description="Take ownership of an unclaimed listing." onClick={() => switchType('claim')} /><TypeOption active={applicationType === 'new'} title="Register a new gym" description="Submit a new gym for directory review." onClick={() => switchType('new')} /></div></section>
 
-                        {/* Claim Existing Gym */}
-                        {applicationType === 'claim' && (
-                            <div>
-                                <label className="block text-sm font-semibold text-white mb-2">
-                                    Select a Gym to Claim <span className="text-red-400">*</span>
-                                </label>
-                                <select
-                                    value={selectedGym}
-                                    onChange={(e) => setSelectedGym(e.target.value)}
-                                    className={selectStyles}
-                                    required
-                                >
-                                    <option value="">Select a gym...</option>
-                                    {unclaimedGyms?.map((gym) => (
-                                        <option key={gym.id} value={gym.id}>
-                                            {gym.name} - {gym.address}
-                                        </option>
-                                    ))}
-                                </select>
-                                {selectedGymData && (
-                                    <div className="mt-3 p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl">
-                                        <div className="flex items-start gap-3">
-                                            <span className="text-emerald-400">🏋️</span>
-                                            <div>
-                                                <p className="text-sm font-semibold text-white">{selectedGymData.name}</p>
-                                                <p className="text-xs text-slate-400 mt-0.5">{selectedGymData.address}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                                {unclaimedGyms?.length === 0 && (
-                                    <div className="mt-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-                                        <p className="text-xs text-amber-400 flex items-center gap-2">
-                                            <span>⚠️</span>
-                                            No unclaimed gyms available. Please register a new gym instead.
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                        {applicationType === 'claim' ? <section className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-7"><SectionTitle step="02" title="Select your gym" description="Choose the listing you want to manage." /><div className="mt-5"><FieldLabel required>Select a gym to claim</FieldLabel><select value={selectedGym} onChange={(event) => setSelectedGym(event.target.value)} className={selectClass} required><option value="">Select a gym…</option>{unclaimedGyms?.map((gym) => <option key={gym.id} value={gym.id}>{gym.name} — {gym.address}</option>)}</select>{selectedGymData && <div className="mt-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3"><p className="text-sm font-semibold text-stone-900">{selectedGymData.name}</p><p className="mt-1 text-xs text-stone-500">{selectedGymData.address}</p></div>}{unclaimedGyms?.length === 0 && <Notice tone="warning">No unclaimed gyms are available. Please register a new gym instead.</Notice>}</div></section> : <NewGymDetails formData={formData} errors={errors} handleInputChange={handleInputChange} states={states} filteredDistricts={filteredDistricts} filteredCities={filteredCities} facilities={facilities} categories={categories} />}
 
-                        {/* New Gym Details */}
-                        {applicationType === 'new' && (
-                            <div className="space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {/* Gym Name */}
-                                    <div>
-                                        <label className="block text-sm font-semibold text-white mb-2">
-                                            Gym Name <span className="text-red-400">*</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            name="name"
-                                            value={formData.name}
-                                            onChange={handleInputChange}
-                                            className="w-full px-4 py-3 bg-slate-900/80 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                                            placeholder="Enter gym name"
-                                            required
-                                        />
-                                        {errors.name && (
-                                            <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
-                                                <span>⚠️</span> {errors.name}
-                                            </p>
-                                        )}
-                                    </div>
+                        <section className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-7"><SectionTitle step={applicationType === 'claim' ? '03' : '03'} title="Verify ownership" description="Upload one official document to support your application." /><div className="mt-5"><FieldLabel required>Business document</FieldLabel><p className="-mt-1 mb-3 text-xs leading-5 text-stone-500">SSM registration, business license, or another official ownership document. PDF, JPG, or PNG up to 5 MB.</p><input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={handleFileChange} className="block w-full cursor-pointer rounded-xl border border-stone-300 bg-stone-50 text-sm text-stone-600 file:mr-4 file:border-0 file:bg-stone-950 file:px-4 file:py-3 file:text-sm file:font-semibold file:text-white hover:file:bg-stone-700" required />{businessDoc && <Notice tone="success"><span className="font-semibold">{businessDoc.name}</span><span className="text-stone-500"> · {(businessDoc.size / 1024).toFixed(1)} KB</span></Notice>}{errors.business_doc && <ErrorText>{errors.business_doc}</ErrorText>}</div></section>
 
-                                    {/* Phone Number */}
-                                    <div>
-                                        <label className="block text-sm font-semibold text-white mb-2">
-                                            Phone Number
-                                        </label>
-                                        <input
-                                            type="text"
-                                            name="phone_number"
-                                            value={formData.phone_number}
-                                            onChange={handleInputChange}
-                                            className="w-full px-4 py-3 bg-slate-900/80 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                                            placeholder="e.g. 012-3456789"
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Address */}
-                                <div>
-                                    <label className="block text-sm font-semibold text-white mb-2">
-                                        Address <span className="text-red-400">*</span>
-                                    </label>
-                                    <textarea
-                                        name="address"
-                                        value={formData.address}
-                                        onChange={handleInputChange}
-                                        rows="2"
-                                        className="w-full px-4 py-3 bg-slate-900/80 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                                        placeholder="Enter full address"
-                                        required
-                                    />
-                                    {errors.address && (
-                                        <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
-                                            <span>⚠️</span> {errors.address}
-                                        </p>
-                                    )}
-                                </div>
-
-                                {/* Location Selection */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div>
-                                        <label className="block text-sm font-semibold text-white mb-2">
-                                            State <span className="text-red-400">*</span>
-                                        </label>
-                                        <select
-                                            name="state_id"
-                                            value={formData.state_id}
-                                            onChange={handleInputChange}
-                                            className={selectStyles}
-                                            required
-                                        >
-                                            <option value="">Select State</option>
-                                            {states?.map((state) => (
-                                                <option key={state.id} value={state.id}>
-                                                    {state.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        {errors.state_id && (
-                                            <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
-                                                <span>⚠️</span> {errors.state_id}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-semibold text-white mb-2">
-                                            District <span className="text-red-400">*</span>
-                                        </label>
-                                        <select
-                                            name="district_id"
-                                            value={formData.district_id}
-                                            onChange={handleInputChange}
-                                            className={selectStyles}
-                                            required
-                                            disabled={!formData.state_id}
-                                        >
-                                            <option value="">Select District</option>
-                                            {filteredDistricts?.map((district) => (
-                                                <option key={district.id} value={district.id}>
-                                                    {district.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        {errors.district_id && (
-                                            <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
-                                                <span>⚠️</span> {errors.district_id}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-semibold text-white mb-2">
-                                            City <span className="text-red-400">*</span>
-                                        </label>
-                                        <select
-                                            name="city_id"
-                                            value={formData.city_id}
-                                            onChange={handleInputChange}
-                                            className={selectStyles}
-                                            required
-                                            disabled={!formData.district_id}
-                                        >
-                                            <option value="">Select City</option>
-                                            {filteredCities?.map((city) => (
-                                                <option key={city.id} value={city.id}>
-                                                    {city.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        {errors.city_id && (
-                                            <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
-                                                <span>⚠️</span> {errors.city_id}
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* WhatsApp Number */}
-                                <div>
-                                    <label className="block text-sm font-semibold text-white mb-2">
-                                        WhatsApp Number
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="whatsapp_number"
-                                        value={formData.whatsapp_number}
-                                        onChange={handleInputChange}
-                                        className="w-full px-4 py-3 bg-slate-900/80 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                                        placeholder="e.g. 60123456789"
-                                    />
-                                </div>
-
-                                {/* Description */}
-                                <div>
-                                    <label className="block text-sm font-semibold text-white mb-2">
-                                        Description
-                                    </label>
-                                    <textarea
-                                        name="description"
-                                        value={formData.description}
-                                        onChange={handleInputChange}
-                                        rows="3"
-                                        className="w-full px-4 py-3 bg-slate-900/80 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                                        placeholder="Describe your gym, facilities, and what makes it special..."
-                                    />
-                                </div>
-
-                                {/* Facilities */}
-                                {facilities?.length > 0 && (
-                                    <div>
-                                        <label className="block text-sm font-semibold text-white mb-3">
-                                            Facilities
-                                        </label>
-                                        <div className="flex flex-wrap gap-2">
-                                            {facilities.map((facility) => (
-                                                <label
-                                                    key={facility.id}
-                                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl border cursor-pointer transition-all text-sm ${
-                                                        formData.facilities.includes(facility.id)
-                                                            ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 shadow-lg shadow-emerald-500/10'
-                                                            : 'border-slate-700/50 text-slate-400 hover:border-slate-600 hover:bg-white/5'
-                                                    }`}
-                                                >
-                                                    <input
-                                                        type="checkbox"
-                                                        name="facilities"
-                                                        value={facility.id}
-                                                        checked={formData.facilities.includes(facility.id)}
-                                                        onChange={handleInputChange}
-                                                        className="hidden"
-                                                    />
-                                                    <span className="text-sm font-medium">{facility.name}</span>
-                                                    {formData.facilities.includes(facility.id) && (
-                                                        <span className="text-emerald-400">✓</span>
-                                                    )}
-                                                </label>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Categories */}
-                                {categories?.length > 0 && (
-                                    <div>
-                                        <label className="block text-sm font-semibold text-white mb-3">
-                                            Categories
-                                        </label>
-                                        <div className="flex flex-wrap gap-2">
-                                            {categories.map((category) => (
-                                                <label
-                                                    key={category.id}
-                                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl border cursor-pointer transition-all text-sm ${
-                                                        formData.categories.includes(category.id)
-                                                            ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 shadow-lg shadow-emerald-500/10'
-                                                            : 'border-slate-700/50 text-slate-400 hover:border-slate-600 hover:bg-white/5'
-                                                    }`}
-                                                >
-                                                    <input
-                                                        type="checkbox"
-                                                        name="categories"
-                                                        value={category.id}
-                                                        checked={formData.categories.includes(category.id)}
-                                                        onChange={handleInputChange}
-                                                        className="hidden"
-                                                    />
-                                                    <span className="text-sm font-medium">{category.name}</span>
-                                                    {formData.categories.includes(category.id) && (
-                                                        <span className="text-emerald-400">✓</span>
-                                                    )}
-                                                </label>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Business Document Upload */}
-                        <div>
-                            <label className="block text-sm font-semibold text-white mb-2">
-                                Business Document <span className="text-red-400">*</span>
-                                <span className="text-xs text-slate-400 font-normal block mt-1">
-                                    Upload your SSM registration, business license, or any official document 
-                                    proving your business ownership (PDF, JPG, PNG - Max 5MB)
-                                </span>
-                            </label>
-                            <div className="relative">
-                                <input
-                                    type="file"
-                                    accept=".pdf,.jpg,.jpeg,.png"
-                                    onChange={handleFileChange}
-                                    className="w-full px-4 py-3 bg-slate-900/80 border border-white/10 rounded-xl text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-500 file:text-slate-950 hover:file:bg-emerald-400 transition-all cursor-pointer"
-                                    required
-                                />
-                            </div>
-                            {businessDoc && (
-                                <div className="mt-2 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
-                                    <p className="text-xs text-emerald-400 flex items-center gap-2">
-                                        <span>✅</span>
-                                        <span className="font-medium">{businessDoc.name}</span>
-                                        <span className="text-slate-400">({(businessDoc.size / 1024).toFixed(1)} KB)</span>
-                                    </p>
-                                </div>
-                            )}
-                            {errors.business_doc && (
-                                <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
-                                    <span>⚠️</span> {errors.business_doc}
-                                </p>
-                            )}
-                        </div>
-
-                        {/* Submit Button */}
-                        <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-white/10">
-                            <button
-                                type="submit"
-                                disabled={isSubmitting}
-                                className="flex-1 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-bold px-6 py-3.5 rounded-xl shadow-lg shadow-emerald-500/30 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {isSubmitting ? (
-                                    <span className="flex items-center justify-center gap-2">
-                                        <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                        </svg>
-                                        Submitting...
-                                    </span>
-                                ) : (
-                                    'Submit Application'
-                                )}
-                            </button>
-                            <Link
-                                href="/"
-                                className="flex-1 text-center text-sm font-semibold text-white/60 hover:text-white px-6 py-3.5 rounded-xl transition-all hover:bg-white/5"
-                            >
-                                Cancel
-                            </Link>
-                        </div>
+                        <div className="flex flex-col-reverse gap-3 border-t border-stone-200 pt-6 sm:flex-row"><Link href="/" className="rounded-xl border border-stone-300 px-5 py-3 text-center text-sm font-semibold text-stone-700 transition hover:border-stone-950">Cancel</Link><button type="submit" disabled={isSubmitting} className="flex-1 rounded-xl bg-stone-950 px-6 py-3 text-sm font-semibold text-white transition hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-50">{isSubmitting ? 'Submitting application…' : 'Submit application'}</button></div>
                     </form>
-                </div>
-
-                {/* Info Box */}
-                <div className="mt-8 glass-card rounded-2xl p-6 backdrop-blur-xl bg-white/5 border-white/10">
-                    <div className="flex items-start gap-4">
-                        <div className="text-2xl">ℹ️</div>
-                        <div>
-                            <h3 className="text-sm font-bold text-white">What happens next?</h3>
-                            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                                After submitting your application, our admin team will review your submission 
-                                and business document. You'll receive a notification once your application is 
-                                approved or rejected. This process typically takes 1-3 business days.
-                            </p>
-                            <Link 
-                                href="/apply-owner/status" 
-                                className="inline-block mt-3 text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition-colors"
-                            >
-                                Check application status →
-                            </Link>
-                        </div>
-                    </div>
+                    <aside className="mt-8 rounded-2xl border border-stone-200 bg-white p-5 sm:p-6"><p className="text-sm font-bold text-stone-900">What happens next?</p><p className="mt-2 max-w-2xl text-sm leading-6 text-stone-600">Our team will review your application and ownership document. You’ll receive a notification after it is approved or rejected, usually within one to three business days.</p><Link href="/apply-owner/status" className="mt-4 inline-block text-sm font-semibold text-stone-950 underline decoration-stone-300 underline-offset-4 hover:decoration-stone-950">Check application status</Link></aside>
                 </div>
             </div>
         </MainLayout>
     );
 }
+
+function NewGymDetails({ formData, errors, handleInputChange, states, filteredDistricts, filteredCities, facilities, categories }) {
+    return <section className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-7"><SectionTitle step="02" title="Tell us about your gym" description="Provide the core details for your new listing." /><div className="mt-6 space-y-6"><div className="grid gap-5 md:grid-cols-2"><Field label="Gym name" required error={errors.name}><input type="text" name="name" value={formData.name} onChange={handleInputChange} className={fieldClass} placeholder="Enter gym name" required /></Field><Field label="Phone number"><input type="text" name="phone_number" value={formData.phone_number} onChange={handleInputChange} className={fieldClass} placeholder="e.g. 012-3456789" /></Field></div><Field label="Address" required error={errors.address}><textarea name="address" value={formData.address} onChange={handleInputChange} rows="2" className={fieldClass} placeholder="Enter full address" required /></Field><div className="grid gap-5 md:grid-cols-3"><Field label="State" required error={errors.state_id}><select name="state_id" value={formData.state_id} onChange={handleInputChange} className={selectClass} required><option value="">Select state</option>{states?.map((state) => <option key={state.id} value={state.id}>{state.name}</option>)}</select></Field><Field label="District" required error={errors.district_id}><select name="district_id" value={formData.district_id} onChange={handleInputChange} className={selectClass} required disabled={!formData.state_id}><option value="">Select district</option>{filteredDistricts.map((district) => <option key={district.id} value={district.id}>{district.name}</option>)}</select></Field><Field label="City" required error={errors.city_id}><select name="city_id" value={formData.city_id} onChange={handleInputChange} className={selectClass} required disabled={!formData.district_id}><option value="">Select city</option>{filteredCities.map((city) => <option key={city.id} value={city.id}>{city.name}</option>)}</select></Field></div><Field label="WhatsApp number"><input type="text" name="whatsapp_number" value={formData.whatsapp_number} onChange={handleInputChange} className={fieldClass} placeholder="e.g. 60123456789" /></Field><Field label="Description"><textarea name="description" value={formData.description} onChange={handleInputChange} rows="3" className={fieldClass} placeholder="Describe your gym, facilities, and what makes it special…" /></Field>{facilities?.length > 0 && <ChoiceGroup label="Facilities" name="facilities" options={facilities} selected={formData.facilities} onChange={handleInputChange} />}{categories?.length > 0 && <ChoiceGroup label="Categories" name="categories" options={categories} selected={formData.categories} onChange={handleInputChange} />}</div></section>;
+}
+
+function SectionTitle({ step, title, description }) { return <div className="flex gap-4"><span className="pt-0.5 font-mono text-xs font-bold text-stone-400">{step}</span><div><h2 className="text-lg font-bold tracking-[-0.02em] text-stone-950">{title}</h2><p className="mt-1 text-sm text-stone-500">{description}</p></div></div>; }
+function TypeOption({ active, title, description, onClick }) { return <button type="button" onClick={onClick} className={`rounded-xl border p-5 text-left transition ${active ? 'border-stone-950 bg-stone-950 text-white' : 'border-stone-200 bg-white text-stone-900 hover:border-stone-400'}`}><p className="text-sm font-bold">{title}</p><p className={`mt-2 text-xs leading-5 ${active ? 'text-stone-300' : 'text-stone-500'}`}>{description}</p></button>; }
+function FieldLabel({ children, required }) { return <label className="mb-2 block text-sm font-semibold text-stone-700">{children}{required && <span className="ml-1 text-red-700">*</span>}</label>; }
+function Field({ label, required, error, children }) { return <div><FieldLabel required={required}>{label}</FieldLabel>{children}{error && <ErrorText>{error}</ErrorText>}</div>; }
+function ErrorText({ children }) { return <p className="mt-2 text-xs font-medium text-red-700">{children}</p>; }
+function Notice({ tone, children }) { return <div className={`mt-3 rounded-xl border px-4 py-3 text-xs ${tone === 'success' ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>{children}</div>; }
+function ChoiceGroup({ label, name, options, selected, onChange }) { return <div><FieldLabel>{label}</FieldLabel><div className="flex flex-wrap gap-2">{options.map((option) => { const checked = selected.includes(option.id); return <label key={option.id} className={`cursor-pointer rounded-full border px-3 py-2 text-sm font-medium transition ${checked ? 'border-stone-950 bg-stone-950 text-white' : 'border-stone-300 text-stone-600 hover:border-stone-950'}`}><input type="checkbox" name={name} value={option.id} checked={checked} onChange={onChange} className="sr-only" />{option.name}</label>; })}</div></div>; }
