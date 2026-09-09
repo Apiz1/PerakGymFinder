@@ -38,4 +38,23 @@ class HandleInertiaRequests extends Middleware
             'turnstileSiteKey' => config('services.turnstile.site_key'),
         ];
     }
+
+     /**
+     * Sidebar badge counts — only queried for super admins, since this
+     * data has no meaning (and shouldn't be queried) for regular users
+     * or gym owners hitting unrelated pages.
+     */
+    private function pendingCounts(Request $request): ?array
+    {
+        if (! $request->user()?->isSuperAdmin()) {
+            return null;
+        }
+
+        return [
+            'owners' => GymOwnerApplication::where('status', 'pending')->count(),
+            'gyms' => Gym::where('status', 'pending')->count(),
+            'reviews' => Review::where('status', 'pending')->count(),
+            'reports' => GymReport::where('status', 'open')->count(),
+        ];
+    }
 }

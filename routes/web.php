@@ -26,6 +26,7 @@ use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\GymReportController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schedule;
 use Inertia\Inertia;
 
 /*
@@ -119,6 +120,7 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->name('admin.')
 
     Route::get('activity-log', [ActivityLogController::class, 'index'])->name('activity-log.index');
     Route::get('activity-log/{activity}', [ActivityLogController::class, 'show'])->name('activity-log.show');
+    Schedule::command('activitylog:clean')->weekly();
     
     });
 
