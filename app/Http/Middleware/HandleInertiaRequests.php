@@ -3,6 +3,10 @@
 namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
+use App\Models\Gym;
+use App\Models\GymOwnerApplication;
+use App\Models\GymReport;
+use App\Models\Review;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -36,6 +40,8 @@ class HandleInertiaRequests extends Middleware
             ],
 
             'turnstileSiteKey' => config('services.turnstile.site_key'),
+            'pendingCounts' => fn () => $this->pendingCounts($request),
+            'ownerPendingCounts' => fn () => $this->ownerPendingCounts($request),
         ];
     }
 
@@ -55,6 +61,38 @@ class HandleInertiaRequests extends Middleware
             'gyms' => Gym::where('status', 'pending')->count(),
             'reviews' => Review::where('status', 'pending')->count(),
             'reports' => GymReport::where('status', 'open')->count(),
+        ];
+    }
+
+    /**
+     * Owner sidebar badge counts — scoped to the owner's own gym only.
+     * Reports respect the same OWNER_VISIBLE_REASONS restriction as
+     * OwnerReportController, so the badge never counts a closed/duplicate
+     * report the owner isn't allowed to actually open.
+     */
+    private function ownerPendingCounts(Request $request): ?array
+    {
+        $user = $request->user();
+
+        if (! $user || (! $user->isGymOwner() && ! $user->isSuperAdmin())) {
+            return null;
+        }
+
+        $gym = $user->gyms()->first();
+
+        if (! $gym) {
+            return null;
+        }
+
+        return [
+            'reports' => $gym->reports()
+                ->where('status', 'open')
+                ->whereIn('reason', ['wrong_info', 'other'])
+                ->count(),
+            'reviews' => $gym->reviews()
+                ->approved()
+                ->whereDoesntHave('reply')
+                ->count(),
         ];
     }
 }

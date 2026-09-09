@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, usePage, router } from '@inertiajs/react';
 
 export default function OwnerLayout({ children, title = 'Owner Dashboard' }) {
-    const { auth, gym, notifications = [], url } = usePage().props;
+    const { auth, gym, ownerPendingCounts ,notifications = [], url } = usePage().props;
     const [searchQuery, setSearchQuery] = useState('');
     const [userDropdown, setUserDropdown] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -14,8 +14,7 @@ export default function OwnerLayout({ children, title = 'Owner Dashboard' }) {
 
     // Check if owner has a gym yet
     const hasGym = !!gym;
-
-    // Navigation Structure - Scoped to Owner capabilities
+    
     const navItems = [
         { 
             name: 'Dashboard', 
@@ -57,7 +56,7 @@ export default function OwnerLayout({ children, title = 'Owner Dashboard' }) {
             name: 'Reviews', 
             path: '/owner/gym/reviews', 
             icon: '⭐',
-            badge: gym?.pending_reviews_count || 0,
+            badge: ownerPendingCounts?.reviews || 0,
             requiresGym: true
         },
         { 
@@ -70,7 +69,7 @@ export default function OwnerLayout({ children, title = 'Owner Dashboard' }) {
             name: 'Reports', 
             path: '/owner/gym/reports', 
             icon: '🚨',
-            badge: gym?.reports_count || 0,
+            badge: ownerPendingCounts?.reports || 0,
             requiresGym: true
         },
         { 
