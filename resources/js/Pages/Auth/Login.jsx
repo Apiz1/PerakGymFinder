@@ -4,10 +4,11 @@ import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import Turnstile from '@/Components/Turnstile';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { useRef, useState } from 'react';
 
 export default function Login({ status, canResetPassword }) {
+    const { turnstileSiteKey, turnstileEnabled } = usePage().props;
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '', password: '', remember: false, turnstile_token: '',
     });
@@ -25,19 +26,19 @@ export default function Login({ status, canResetPassword }) {
 
     const submit = (event) => {
         event.preventDefault();
-        if (!turnstileVerified) {
+        if (turnstileEnabled && !turnstileVerified) {
             setTurnstileError(true);
             alert('Please complete the security verification.');
             return;
         }
         post(route('login'), {
             onError: (formErrors) => {
-                resetTurnstile();
+                if (turnstileEnabled) resetTurnstile();
                 if (formErrors.email || formErrors.password) setTurnstileError(false);
             },
             onFinish: () => {
                 reset('password');
-                if (Object.keys(errors).length > 0) resetTurnstile();
+                if (Object.keys(errors).length > 0 && turnstileEnabled) resetTurnstile();
             },
         });
     };
@@ -99,10 +100,12 @@ export default function Login({ status, canResetPassword }) {
                                     <InputError message={errors.password} className="mt-2 text-xs text-red-700" />
                                 </div>
                                 <label className="flex w-fit cursor-pointer items-center gap-2.5"><Checkbox name="remember" checked={data.remember} onChange={(event) => setData('remember', event.target.checked)} className="rounded border-stone-300 text-stone-950 focus:ring-stone-950" /><span className="text-sm text-stone-600">Keep me signed in</span></label>
-                                <div className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-4"><p className="mb-3 text-center text-xs font-medium text-stone-500">Security verification</p><div className="flex justify-center"><Turnstile ref={turnstileRef} onVerify={verifyTurnstile} onError={() => verifyTurnstile('')} onExpired={expireTurnstile} /></div></div>
-                                {turnstileError && <p className="text-center text-xs font-medium text-red-700">Please complete the security verification.</p>}
-                                {errors.turnstile_token && <p className="text-center text-xs font-medium text-red-700">{errors.turnstile_token}</p>}
-                                <PrimaryButton className="flex w-full justify-center rounded-xl bg-stone-950 py-3 text-sm font-semibold text-white transition hover:bg-stone-700 focus:bg-stone-700 active:bg-stone-950 disabled:opacity-50" disabled={processing || !turnstileVerified}>{processing ? <span className="flex items-center gap-2"><Spinner />Signing in…</span> : 'Sign in'}</PrimaryButton>
+                                {turnstileEnabled && (
+                                    <div className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-4"><p className="mb-3 text-center text-xs font-medium text-stone-500">Security verification</p><div className="flex justify-center"><Turnstile ref={turnstileRef} onVerify={verifyTurnstile} onError={() => verifyTurnstile('')} onExpired={expireTurnstile} /></div></div>
+                                )}
+                                {turnstileEnabled && turnstileError && <p className="text-center text-xs font-medium text-red-700">Please complete the security verification.</p>}
+                                {turnstileEnabled && errors.turnstile_token && <p className="text-center text-xs font-medium text-red-700">{errors.turnstile_token}</p>}
+                                <PrimaryButton className="flex w-full justify-center rounded-xl bg-stone-950 py-3 text-sm font-semibold text-white transition hover:bg-stone-700 focus:bg-stone-700 active:bg-stone-950 disabled:opacity-50" disabled={processing || (turnstileEnabled && !turnstileVerified)}>{processing ? <span className="flex items-center gap-2"><Spinner />Signing in…</span> : 'Sign in'}</PrimaryButton>
                             </form>
 
                             <div className="relative my-8"><div className="border-t border-stone-200" /><span className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-xs text-stone-400">Or continue with</span></div>

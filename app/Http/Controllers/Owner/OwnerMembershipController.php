@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Owner;
 
 use App\Http\Controllers\Controller;
 use App\Models\MembershipPlan;
+use App\Models\Setting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -40,6 +41,15 @@ class OwnerMembershipController extends Controller
         $gym = Auth::user()->gyms()->first();
 
         abort_unless($gym, 404);
+
+        $maxPlans = Setting::get('max_membership_plans', 10);
+        $currentCount = $gym->membershipPlans()->count();
+
+        if ($currentCount >= $maxPlans) {
+            return back()->withErrors([
+                'name' => "You can have at most {$maxPlans} membership plans per gym.",
+            ]);
+        }
 
         $validated = $request->validate([
             'name' => 'required|string|max:150',

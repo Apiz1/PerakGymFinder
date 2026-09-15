@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Owner;
 
 use App\Http\Controllers\Controller;
 use App\Models\GymImage;
+use App\Models\Setting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -31,7 +32,7 @@ class PhotoGymController extends Controller
         return Inertia::render('Owner/Gym/Photos', [
             'gym' => $gym->only(['id', 'name', 'status']),
             'images' => $gym->images()->orderBy('sort_order')->get(),
-            'maxImages' => self::MAX_IMAGES,
+            'maxImages' => Setting::get('max_gym_images', 10),
         ]);
     }
 

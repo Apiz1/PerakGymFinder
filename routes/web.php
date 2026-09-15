@@ -12,8 +12,7 @@ use App\Http\Controllers\Admin\AdminSearchController;
 use App\Http\Controllers\Admin\AdminNotificationController;
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\AdminPendingController;
-use App\Http\Controllers\GymController;
-use App\Http\Controllers\GymOwnerApplicationController;
+use App\Http\Controllers\Admin\AdminSettingController;
 use App\Http\Controllers\Owner\CreateGymController;
 use App\Http\Controllers\Owner\EditGymController;
 use App\Http\Controllers\Owner\GymOwnerController;
@@ -24,6 +23,8 @@ use App\Http\Controllers\Owner\OwnerReviewController;
 use App\Http\Controllers\Owner\PhotoGymController;
 use App\Http\Controllers\Owner\OwnerReportController;
 use App\Http\Controllers\Owner\OwnerAnalyticsController;
+use App\Http\Controllers\GymController;
+use App\Http\Controllers\GymOwnerApplicationController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\GymReportController;
@@ -125,6 +126,9 @@ Route::middleware(['auth', 'role:super_admin'])->prefix('admin')->name('admin.')
     Schedule::command('activitylog:clean')->weekly();
 
     Route::get('pending', [AdminPendingController::class, 'index'])->name('pending.index');
+
+    Route::get('settings', [AdminSettingController::class, 'index'])->name('settings.index');
+    Route::put('settings', [AdminSettingController::class, 'update'])->name('settings.update');
     
     });
 

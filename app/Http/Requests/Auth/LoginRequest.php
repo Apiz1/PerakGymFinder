@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use App\Rules\Turnstile;
+use App\Models\Setting;
+use Illuminate\Validation\Rule;
 
 class LoginRequest extends FormRequest
 {
@@ -31,7 +33,10 @@ class LoginRequest extends FormRequest
         return [
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
-            'turnstile_token' => ['required', new Turnstile],
+            'turnstile_token' => [
+                Rule::requiredIf(fn () => Setting::get('turnstile_enabled', true)),
+                new Turnstile,
+            ],
         ];
     }
 

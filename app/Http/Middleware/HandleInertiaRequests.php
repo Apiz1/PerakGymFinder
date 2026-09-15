@@ -7,6 +7,7 @@ use App\Models\Gym;
 use App\Models\GymOwnerApplication;
 use App\Models\GymReport;
 use App\Models\Review;
+use App\Models\Setting;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -40,6 +41,7 @@ class HandleInertiaRequests extends Middleware
             ],
 
             'turnstileSiteKey' => config('services.turnstile.site_key'),
+            'turnstileEnabled' => Setting::get('turnstile_enabled', true),
             'pendingCounts' => fn () => $this->pendingCounts($request),
             'ownerPendingCounts' => fn () => $this->ownerPendingCounts($request),
         ];
