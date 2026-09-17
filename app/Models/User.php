@@ -98,4 +98,13 @@ class User extends Authenticatable
     {
         return $this->role?->name === 'user';
     }
+
+    /**
+     * Default-on unless the user explicitly turned it off — so a null
+     * column (never touched settings) still notifies by default.
+     */
+    public function wantsNotification(string $key): bool
+    {
+        return $this->notification_preferences[$key] ?? true;
+    }
 }

@@ -23,6 +23,7 @@ use App\Http\Controllers\Owner\OwnerReviewController;
 use App\Http\Controllers\Owner\PhotoGymController;
 use App\Http\Controllers\Owner\OwnerReportController;
 use App\Http\Controllers\Owner\OwnerAnalyticsController;
+use App\Http\Controllers\Owner\NotificationPreferenceController;
 use App\Http\Controllers\GymController;
 use App\Http\Controllers\GymOwnerApplicationController;
 use App\Http\Controllers\ReviewController;
@@ -176,6 +177,10 @@ Route::middleware(['auth', 'role:gym_owner,super_admin'])->prefix('owner')->name
     Route::post('notifications/read-all', [AdminNotificationController::class, 'markAllRead'])->name('notifications.read-all');
 
     Route::get('/gym/analytics', [OwnerAnalyticsController::class, 'index'])->name('gym.analytics.index');
+
+    Route::get('/settings', [NotificationPreferenceController::class, 'edit'])->name('settings.edit');
+    Route::put('/settings', [NotificationPreferenceController::class, 'update'])->name('settings.update');
+
 });
 
 require __DIR__.'/auth.php';
