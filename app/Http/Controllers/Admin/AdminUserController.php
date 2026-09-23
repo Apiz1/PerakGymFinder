@@ -100,11 +100,11 @@ class AdminUserController extends Controller
         ]);
 
         $role = Role::where('name', $validated['role'])->firstOrFail();
-        $user->update(['role_id' => $role->id]);
+        $user->role_id = $role->id;
+        $user->save();
 
         return back()->with('success', "{$user->name}'s role updated to {$validated['role']}.");
     }
-
     /**
      * Toggle account active/inactive — e.g. suspicious activity, abuse,
      * non-payment. Deactivating does NOT delete anything; it's meant to
@@ -116,7 +116,8 @@ class AdminUserController extends Controller
             return back()->with('error', 'You cannot deactivate your own account.');
         }
 
-        $user->update(['is_active' => ! $user->is_active]);
+        $user->is_active = ! $user->is_active;
+        $user->save();
 
         return back()->with('success', $user->is_active ? 'Account activated.' : 'Account deactivated.');
     }

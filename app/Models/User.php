@@ -16,13 +16,11 @@ class User extends Authenticatable
     use HasFactory, Notifiable, LogsActivity;
 
     protected $fillable = [
-        'role_id',
         'name',
         'email',
         'password',
         'phone',
         'avatar_path',
-        'is_active',
     ];
 
     protected $hidden = [
@@ -58,7 +56,7 @@ class User extends Authenticatable
                 'is_active',
             ])
             ->logOnlyDirty()
-            ->setDescriptionForEvent(fn (string $eventName) => "User  was {$eventName}");
+            ->setDescriptionForEvent(fn (string $eventName) => "User was {$eventName}");
     }
 
     /*

@@ -88,7 +88,8 @@ class AdminGymOwnerApplicationController extends Controller
         DB::transaction(function () use ($ownerApplication) {
             $gymOwnerRole = Role::where('name', 'gym_owner')->firstOrFail();
 
-            $ownerApplication->user->update(['role_id' => $gymOwnerRole->id]);
+            $ownerApplication->user->role_id = $gymOwnerRole->id;
+            $ownerApplication->user->save();
 
             if ($ownerApplication->gym_id) {
                 $ownerApplication->gym->update(['owner_id' => $ownerApplication->user_id]);
