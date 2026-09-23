@@ -50,7 +50,8 @@ export default function MainLayout({ children }) {
             return {
                 logout: '/logout', login: '/login', register: '/register',
                 'owner-applications.create': '/apply-owner', profile: '/profile',
-            }[name] || '#';
+                'favorites.index': '/favorites',
+            }[name] || '#'; 
         }
     };
 
@@ -96,6 +97,7 @@ export default function MainLayout({ children }) {
                         <div className="min-w-0"><p className="truncate text-sm font-semibold text-stone-950">{userName}</p><p className="truncate text-xs text-stone-500">{userEmail}</p></div>
                     </div>
                     <Link href={getRoute('profile')} onClick={() => setMobileOpen(false)} className="rounded-xl px-3 py-3 text-sm font-semibold text-stone-800 transition hover:bg-stone-200">My profile</Link>
+                    <Link href={getRoute('favorites.index')} onClick={() => setMobileOpen(false)} className="rounded-xl px-3 py-3 text-sm font-semibold text-stone-800 transition hover:bg-stone-200">My favorites</Link>
                     <Link href="/settings" onClick={() => setMobileOpen(false)} className="rounded-xl px-3 py-3 text-sm font-semibold text-stone-800 transition hover:bg-stone-200">Settings</Link>
                     <button onClick={openLogout} className="w-full rounded-xl px-3 py-3 text-left text-sm font-semibold text-red-700 transition hover:bg-red-50">Sign out</button>
                 </>
@@ -130,6 +132,7 @@ export default function MainLayout({ children }) {
                                         <div className="flex items-center gap-3 px-3 py-3"><Avatar name={userName} src={userAvatar} large /><div className="min-w-0"><p className="truncate text-sm font-semibold">{userName}</p><p className="truncate text-xs text-stone-500">{userEmail}</p><p className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-stone-400">{userRole}</p></div></div>
                                         <div className="my-1 border-t border-stone-100" />
                                         <Link href={getRoute('profile')} onClick={() => setProfileOpen(false)} className="block rounded-xl px-3 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-100">My profile</Link>
+                                        <Link href={getRoute('favorites.index')} onClick={() => setProfileOpen(false)} className="block rounded-xl px-3 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-100">My favorites</Link>
                                         <Link href="/settings" onClick={() => setProfileOpen(false)} className="block rounded-xl px-3 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-100">Settings</Link>
                                         <div className="my-1 border-t border-stone-100" />
                                         <button onClick={openLogout} className="block w-full rounded-xl px-3 py-2.5 text-left text-sm font-medium text-red-700 transition hover:bg-red-50">Sign out</button>

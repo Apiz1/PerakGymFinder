@@ -4,7 +4,7 @@ import MainLayout from '@/Layouts/MainLayout';
 
 const formatRating = (value) => Number.isFinite(Number(value)) ? Number(value).toFixed(1) : 'N/A';
 
-export default function Show({ gym, formattedHours = [], openStatus = null }) {
+export default function Show({ gym, formattedHours = [], openStatus = null, isFavorited = false }) {
     const [selectedImage, setSelectedImage] = useState(0);
     const [showLightbox, setShowLightbox] = useState(false);
     const [showReviewModal, setShowReviewModal] = useState(false);
@@ -54,7 +54,38 @@ export default function Show({ gym, formattedHours = [], openStatus = null }) {
                     <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,2fr)_320px]">
                         <div className="min-w-0 space-y-6">
                             <section className="border-b border-stone-200 pb-7">
-                                <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.15em] text-stone-400">Gym listing</p><h1 className="mt-2 text-3xl font-bold tracking-[-0.05em] text-stone-950 sm:text-5xl">{gym.name}</h1><p className="mt-3 flex max-w-2xl items-start gap-2 text-sm leading-6 text-stone-500"><PinIcon /><span>{gym.address}{gym.city && `, ${gym.city.name}`}{gym.district && `, ${gym.district.name}`}{gym.state && `, ${gym.state.name}`}</span></p></div><div className="flex shrink-0 items-center gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3"><StarRating value={gym.average_rating} /><div><p className="text-xl font-bold tracking-tight">{formatRating(gym.average_rating)}</p><p className="text-xs text-stone-500">{gym.total_reviews || 0} reviews</p></div></div></div>
+                                <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+                                    <div>
+                                        <p className="text-xs font-bold uppercase tracking-[0.15em] text-stone-400">Gym listing</p>
+                                        <h1 className="mt-2 text-3xl font-bold tracking-[-0.05em] text-stone-950 sm:text-5xl">{gym.name}</h1>
+                                        <p className="mt-3 flex max-w-2xl items-start gap-2 text-sm leading-6 text-stone-500"><PinIcon /><span>{gym.address}{gym.city && `, ${gym.city.name}`}{gym.district && `, ${gym.district.name}`}{gym.state && `, ${gym.state.name}`}</span></p>
+                                    </div>
+                                    <div className="flex shrink-0 items-center gap-3">
+                                        {/* Heart icon favorite button */}
+                                        <Link
+                                            href={route('gyms.favorite', gym.id)}
+                                            method="post"
+                                            as="button"
+                                            preserveScroll
+                                            aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+                                            title={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+                                            className={`inline-flex h-[52px] w-[52px] items-center justify-center rounded-xl border transition ${
+                                                isFavorited
+                                                    ? 'border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100'
+                                                    : 'border-stone-200 bg-white text-stone-500 hover:border-stone-950 hover:text-stone-950'
+                                            }`}
+                                        >
+                                            <HeartIcon filled={isFavorited} />
+                                        </Link>
+                                        <div className="flex items-center gap-3 rounded-xl border border-stone-200 bg-white px-4 py-3">
+                                            <StarRating value={gym.average_rating} />
+                                            <div>
+                                                <p className="text-xl font-bold tracking-tight">{formatRating(gym.average_rating)}</p>
+                                                <p className="text-xs text-stone-500">{gym.total_reviews || 0} reviews</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                                 <div className="mt-5 flex flex-wrap items-center gap-2">{openStatus?.is_open ? <Badge tone="open"><i className="h-1.5 w-1.5 rounded-full bg-emerald-600" />{openStatus.label}</Badge> : <Badge><i className="h-1.5 w-1.5 rounded-full bg-stone-400" />{openStatus?.label || 'Closed'}</Badge>}{gym.categories?.map((category) => <Badge key={category.id}>{category.name}</Badge>)}</div>
                             </section>
                             {gym.description && <Panel title="About"><p className="whitespace-pre-line text-sm leading-7 text-stone-600">{gym.description}</p></Panel>}
@@ -64,7 +95,30 @@ export default function Show({ gym, formattedHours = [], openStatus = null }) {
                         </div>
 
                         <aside className="space-y-6">
-                            <section className="rounded-2xl border border-stone-200 bg-white p-5 lg:sticky lg:top-24"><h2 className="text-sm font-bold uppercase tracking-[0.12em] text-stone-500">Contact & directions</h2><div className="mt-4 space-y-3 text-sm text-stone-600">{gym.phone_number && <Info label="Phone" value={gym.phone_number} />}{gym.whatsapp_number && <Info label="WhatsApp" value={gym.whatsapp_number} />}{gym.email && <Info label="Email" value={gym.email} />}{gym.website && <div><p className="text-xs font-medium text-stone-400">Website</p><a href={gym.website} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block break-all font-semibold text-stone-900 underline decoration-stone-300 underline-offset-4 hover:decoration-stone-950">Visit website</a></div>}</div><div className="mt-5 space-y-2 border-t border-stone-100 pt-5">{gym.whatsapp_number && <a href={`https://wa.me/${gym.whatsapp_number.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hi ${gym.name}, I found your gym on GymFinder Perak!`)}`} target="_blank" rel="noopener noreferrer" className="block rounded-lg bg-stone-950 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-stone-700">Message on WhatsApp</a>}{gym.google_maps_url && <a href={gym.google_maps_url} target="_blank" rel="noopener noreferrer" className="block rounded-lg border border-stone-300 px-4 py-3 text-center text-sm font-semibold text-stone-700 transition hover:border-stone-950">Get directions</a>}{!hasReviewed ? <button onClick={() => setShowReviewModal(true)} className="w-full rounded-lg border border-stone-300 px-4 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-950">Write a review</button> : <p className="rounded-lg bg-emerald-50 px-3 py-2 text-center text-xs font-medium text-emerald-800">You have reviewed this gym.</p>}</div><Link href={reportUrl} className="mt-5 inline-flex text-xs font-medium text-stone-500 underline underline-offset-4 hover:text-stone-950">Report an issue</Link></section>
+                            <section className="rounded-2xl border border-stone-200 bg-white p-5 lg:sticky lg:top-24">
+                                <h2 className="text-sm font-bold uppercase tracking-[0.12em] text-stone-500">Contact & directions</h2>
+                                <div className="mt-4 space-y-3 text-sm text-stone-600">{gym.phone_number && <Info label="Phone" value={gym.phone_number} />}{gym.whatsapp_number && <Info label="WhatsApp" value={gym.whatsapp_number} />}{gym.email && <Info label="Email" value={gym.email} />}{gym.website && <div><p className="text-xs font-medium text-stone-400">Website</p><a href={gym.website} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block break-all font-semibold text-stone-900 underline decoration-stone-300 underline-offset-4 hover:decoration-stone-950">Visit website</a></div>}</div>
+                                <div className="mt-5 space-y-2 border-t border-stone-100 pt-5">
+                                    {gym.whatsapp_number && <a href={`https://wa.me/${gym.whatsapp_number.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hi ${gym.name}, I found your gym on GymFinder Perak!`)}`} target="_blank" rel="noopener noreferrer" className="block rounded-lg bg-stone-950 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-stone-700">Message on WhatsApp</a>}
+                                    {gym.google_maps_url && <a href={gym.google_maps_url} target="_blank" rel="noopener noreferrer" className="block rounded-lg border border-stone-300 px-4 py-3 text-center text-sm font-semibold text-stone-700 transition hover:border-stone-950">Get directions</a>}
+                                    {/* Full-width favorite link */}
+                                    <Link
+                                        href={route('gyms.favorite', gym.id)}
+                                        method="post"
+                                        as="button"
+                                        preserveScroll
+                                        className={`block w-full rounded-lg border px-4 py-3 text-center text-sm font-semibold transition ${
+                                            isFavorited
+                                                ? 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100'
+                                                : 'border-stone-300 text-stone-700 hover:border-stone-950'
+                                        }`}
+                                    >
+                                        {isFavorited ? '♥ Saved to favorites' : '♡ Save to favorites'}
+                                    </Link>
+                                    {!hasReviewed ? <button onClick={() => setShowReviewModal(true)} className="w-full rounded-lg border border-stone-300 px-4 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-950">Write a review</button> : <p className="rounded-lg bg-emerald-50 px-3 py-2 text-center text-xs font-medium text-emerald-800">You have reviewed this gym.</p>}
+                                </div>
+                                <Link href={reportUrl} className="mt-5 inline-flex text-xs font-medium text-stone-500 underline underline-offset-4 hover:text-stone-950">Report an issue</Link>
+                            </section>
                             {hasReviews && <RecentReviews reviews={gym.reviews} />}
                         </aside>
                     </div>
@@ -92,3 +146,4 @@ function Lightbox({ image, name, images, selected, select, close }) { return <di
 function ReviewModal({ gymName, rating, hoverRating, setRating, setHoverRating, comment, setComment, submit, submitting, close }) { return <div className="fixed inset-0 z-50 grid place-items-center p-5"><button className="absolute inset-0 bg-stone-950/40 backdrop-blur-sm" onClick={close} aria-label="Close review form" /><div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"><div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-[.14em] text-stone-400">Share your experience</p><h2 className="mt-1 text-xl font-bold">Review {gymName}</h2></div><button onClick={close} className="text-stone-400 hover:text-stone-950">×</button></div><form onSubmit={submit} className="mt-6 space-y-5"><div><label className="text-sm font-semibold">Your rating</label><div className="mt-2 flex items-center gap-1">{[1, 2, 3, 4, 5].map((star) => <button key={star} type="button" onClick={() => setRating(star)} onMouseEnter={() => setHoverRating(star)} onMouseLeave={() => setHoverRating(0)} className={`text-3xl leading-none ${star <= (hoverRating || rating) ? 'text-amber-500' : 'text-stone-200'}`}>★</button>)}<span className="ml-2 text-sm text-stone-500">{rating ? `${rating}/5` : 'Select'}</span></div></div><div><label htmlFor="comment" className="text-sm font-semibold">Comment</label><textarea id="comment" value={comment} onChange={(event) => setComment(event.target.value)} rows="4" className="mt-2 w-full resize-none rounded-xl border-stone-300 text-sm text-stone-800 focus:border-stone-950 focus:ring-stone-950" placeholder="Share your experience at this gym..." /></div><div className="flex gap-3 border-t border-stone-100 pt-5"><button type="button" onClick={close} className="flex-1 rounded-lg border border-stone-300 px-4 py-2.5 text-sm font-semibold">Cancel</button><button type="submit" disabled={submitting || !rating} className="flex-1 rounded-lg bg-stone-950 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{submitting ? 'Submitting…' : 'Submit review'}</button></div></form></div></div>; }
 function ArrowLeft() { return <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m11 5-7 7 7 7m-7-7h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
 function PinIcon() { return <svg className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 10c0 5-8 11-8 11s-8-6-8-11a8 8 0 1 1 16 0Z" stroke="currentColor" strokeWidth="1.7" /><circle cx="12" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.7" /></svg>; }
+function HeartIcon({ filled = false }) { return <svg className="h-5 w-5" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z" /></svg>; }

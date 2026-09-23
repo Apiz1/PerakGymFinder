@@ -8,6 +8,7 @@ use App\Models\District;
 use App\Models\Facility;
 use App\Models\Gym;
 use App\Models\State;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
@@ -107,9 +108,11 @@ class GymController extends Controller
             'gym' => $gym,
             'formattedHours' => $this->formatOperatingHours($gym),
             'openStatus' => $this->openStatus($gym),
+            'isFavorited' => Auth::check()
+                ? Auth::user()->favorites()->where('gym_id', $gym->id)->exists()
+                : false,
         ]);
     }
-
     /**
      * Turns the raw 7-day gym_operating_hours rows into a display-ready
      * schedule — day names instead of 0-6, 12-hour times instead of

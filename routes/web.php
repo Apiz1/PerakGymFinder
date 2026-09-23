@@ -29,6 +29,7 @@ use App\Http\Controllers\GymOwnerApplicationController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\GymReportController;
+use App\Http\Controllers\FavoriteController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schedule;
 use Inertia\Inertia;
@@ -63,6 +64,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/gyms/{gym}/reviews', [ReviewController::class, 'store'])->middleware('throttle:10,1')->name('reviews.store');
     Route::get('/gyms/{gym}/report', [GymReportController::class, 'create'])->name('gyms.report.create');
     Route::post('/gyms/{gym}/report/store', [GymReportController::class, 'store'])->middleware('throttle:10,1')->name('gyms.report');
+
+    Route::get('/favorites', [FavoriteController::class, 'index'])->name('favorites.index');
+    Route::post('/gyms/{gym}/favorite', [FavoriteController::class, 'toggle'])->name('gyms.favorite');
 });
 
 /*
