@@ -264,7 +264,7 @@ export default function Dashboard({ metrics = {}, pendingGyms = [], pendingOwner
                                             </td>
                                             <td className="px-5 py-4 text-right">
                                                 <Link
-                                                    href={`/admin/owners/${claim.id}/verify`}
+                                                    href={`/admin/owner-applications/${claim.id}`}
                                                     className="inline-flex items-center bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 font-bold px-3.5 py-1.5 rounded-lg transition-all"
                                                 >
                                                     Verify &rarr;

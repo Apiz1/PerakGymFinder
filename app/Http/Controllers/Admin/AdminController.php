@@ -38,6 +38,13 @@ class AdminController extends Controller
                 ->latest()
                 ->limit(10)
                 ->get(['id', 'name', 'city_id', 'district_id', 'created_at']),
+
+            // ✅ ADDED — Feeds the "Gym Claim Applications" table
+            'pendingOwners' => GymOwnerApplication::where('status', 'pending')
+                ->with(['user:id,name,email', 'gym:id,name,address'])
+                ->latest()
+                ->limit(10)
+                ->get(),
         ]);
     }
 }
